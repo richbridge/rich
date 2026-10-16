@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>门类与位置</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .pane-box { background: #fff; padding: 12px; border-radius: 4px; }
+        .layui-tab-content { min-height: 560px; padding: 10px 0; }
+        .chip { display: inline-block; padding: 1px 8px; margin: 0 6px 6px 0; font-size: 12px;
+            color: #2f7ef7; background: #eef4ff; border: 1px solid #d6e4ff; border-radius: 10px;
+            cursor: pointer; }
+        .chip:hover { background: #dce9ff; }
+        .office-card { border: 1px solid #e6e6e6; border-radius: 4px; padding: 10px 12px;
+            margin: 0 10px 10px 0; display: inline-block; min-width: 220px; vertical-align: top; }
+        .office-card b { font-size: 14px; }
+        .office-card .num { color: #2f7ef7; font-size: 18px; }
+        .office-card .sub { color: #999; font-size: 12px; margin-top: 4px; }
+        .bar { position: relative; height: 14px; line-height: 14px; background: #eee;
+            border-radius: 7px; overflow: hidden; }
+        .bar > i { display: block; height: 14px; }
+        .bar > span { position: absolute; top: 0; left: 0; width: 100%; text-align: center;
+            font-size: 11px; color: #333; }
+        .loc-tree { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+        .loc-tree ul { list-style: none; margin: 0; padding-left: 26px; }
+        .loc-tree li { margin: 2px 0; }
+        .loc-tree .node { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+            border-radius: 4px; }
+        .loc-tree .node:hover { background: #f5f8ff; }
+        .loc-tree .tree-toggle { width: 18px; height: 18px; line-height: 16px; text-align: center;
+            border: 1px solid #d0d7de; border-radius: 3px; cursor: pointer; user-select: none;
+            color: #576b95; font-size: 12px; flex: none; }
+        .loc-tree .tree-toggle.leaf { visibility: hidden; }
+        .loc-tree .n-name { font-weight: 600; }
+        .loc-tree li li .n-name { font-weight: 400; }
+        .loc-tree .n-badge { font-size: 11px; color: #8c8c8c; background: #f2f3f5;
+            padding: 0 6px; border-radius: 8px; flex: none; }
+        .loc-tree .n-stat { color: #888; font-size: 12px; }
+        .loc-tree .n-code { color: #576b95; font-size: 12px; }
+        .loc-tree .n-vol { font-size: 12px; color: #2f7ef7; cursor: pointer; flex: none; }
+        .loc-tree .n-vol:hover { text-decoration: underline; }
+        .loc-tree .mini-bar { width: 90px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="pane-box">
+        <div class="layui-tab layui-tab-brief" lay-filter="basicTab">
+            <ul class="layui-tab-title">
+                <li class="layui-this">档案门类</li>
+                <li>存放位置</li>
+                <li>位置导航</li>
+            </ul>
+            <div class="layui-tab-content">
+                <!-- 门类 -->
+                <div class="layui-tab-item layui-show">
+                    <div style="margin-bottom:8px">
+                        <button type="button" class="layui-btn layui-btn-sm" id="addCategoryBtn">新增门类</button>
+                        <span class="layui-word-aux">门类代码用于生成案卷号，如 WS → 2026-WS-001</span>
+                    </div>
+                    <table class="layui-hide" id="categoryTable" lay-filter="categoryTable"></table>
+                </div>
+
+                <!-- 存放位置 -->
+                <div class="layui-tab-item">
+                    <form class="layui-form" lay-filter="locSearch" style="margin-bottom:6px">
+                        <div class="layui-inline">
+                            <label class="layui-form-label" style="width:70px">办公室</label>
+                            <div class="layui-input-inline" style="width:170px">
+                                <select name="officeRoom" id="sOffice" lay-filter="sOffice"><option value="">全部</option></select>
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <label class="layui-form-label" style="width:60px">柜号</label>
+                            <div class="layui-input-inline" style="width:200px">
+                                <select name="cabinetNo" id="sCabinet"><option value="">全部</option></select>
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <label class="layui-form-label" style="width:70px">文件夹</label>
+                            <div class="layui-input-inline" style="width:170px">
+                                <input type="text" name="folderNo" class="layui-input" placeholder="夹名 / 盒号">
+                            </div>
+                        </div>
+                        <div class="layui-inline">
+                            <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="locSearchBtn">查询</button>
+                            <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="locResetBtn">重置</button>
+                            <button type="button" class="layui-btn layui-btn-sm" id="addLocationBtn">新增位置</button>
+                        </div>
+                        <div class="layui-inline">
+                            <span class="layui-word-aux">层级：办公室 → 柜子 → 层 → 文件夹；已用卷数由案卷位置自动汇总</span>
+                        </div>
+                    </form>
+                    <table class="layui-hide" id="locationTable" lay-filter="locationTable"></table>
+                </div>
+
+                <!-- 位置导航（层级树） -->
+                <div class="layui-tab-item">
+                    <div id="officeCards" style="margin-bottom:8px"></div>
+                    <div style="margin-bottom:6px">
+                        <span class="layui-word-aux">层级：办公室 → 柜子 → 层 → 文件夹；点击编号可展开/收起，文件夹可直达案卷</span>
+                    </div>
+                    <div id="locTree" style="background:#fff;border:1px solid #eee;border-radius:4px;padding:10px;min-height:380px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 门类表单 -->
+<div id="categoryForm" style="display:none; padding: 14px 12px 4px">
+    <form class="layui-form layui-form-pane" id="categoryEdit" lay-filter="categoryEdit">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">门类代码</label>
+                <div class="layui-input-inline" style="width:140px">
+                    <input type="text" name="categoryCode" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">门类名称</label>
+                <div class="layui-input-inline" style="width:200px">
+                    <input type="text" name="categoryName" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">归口部门</label>
+                <div class="layui-input-inline" style="width:200px">
+                    <input type="text" name="keeperDept" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">默认期限</label>
+                <div class="layui-input-inline" style="width:120px">
+                    <select name="retention">
+                        <option value="永久">永久</option>
+                        <option value="30年">30年</option>
+                        <option value="10年">10年</option>
+                        <option value="5年">5年</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">排序</label>
+                <div class="layui-input-inline" style="width:100px">
+                    <input type="number" name="seq" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">备注</label>
+                <div class="layui-input-inline" style="width:520px">
+                    <input type="text" name="remark" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button type="button" class="layui-btn" lay-submit lay-filter="categorySubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="categoryCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 位置表单 -->
+<div id="locationForm" style="display:none; padding: 14px 12px 4px">
+    <form class="layui-form layui-form-pane" id="locationEdit" lay-filter="locationEdit">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">办公室</label>
+                <div class="layui-input-inline" style="width:230px">
+                    <input type="text" name="officeRoom" placeholder="如 财务科档案室" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">位置编号</label>
+                <div class="layui-input-inline" style="width:160px">
+                    <input type="text" name="locationCode" placeholder="留空自动生成" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="margin-top:-6px">
+            <div class="layui-input-block" style="margin-left:110px">
+                <span class="layui-word-aux">已有办公室：</span><span id="officeChips"></span>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">柜号</label>
+                <div class="layui-input-inline" style="width:230px">
+                    <input type="text" name="cabinetNo" placeholder="如 1号档案柜（文书-现行）" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">层号</label>
+                <div class="layui-input-inline" style="width:160px">
+                    <input type="text" name="layerNo" placeholder="如 第1层" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">文件夹</label>
+                <div class="layui-input-inline" style="width:230px">
+                    <input type="text" name="folderNo" placeholder="如 第01夹 2026年发文" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">容量(卷)</label>
+                <div class="layui-input-inline" style="width:160px">
+                    <input type="number" name="capacity" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">备注</label>
+                <div class="layui-input-inline" style="width:520px">
+                    <input type="text" name="remark" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button type="button" class="layui-btn" lay-submit lay-filter="locationSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="locationCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script type="text/html" id="categoryBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="locationBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="volumes">案卷</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script th:src="@{/layui/layui.js}"></script><script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'element'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer,
+                $ = layui.jquery, element = layui.element;
+
+        var categoryIns = null, locationIns = null, locationCache = [];
+
+        function renderCategory() {
+            categoryIns = table.render({
+                elem: '#categoryTable', url: '/api/archive/category/list', method: 'get',
+                page: false, height: 480,
+                cols: [[
+                    {field: 'categoryCode', title: '门类代码', width: 120},
+                    {field: 'categoryName', title: '门类名称', minWidth: 180},
+                    {field: 'keeperDept', title: '归口部门', width: 160},
+                    {field: 'retention', title: '默认保管期限', width: 130, align: 'center'},
+                    {field: 'seq', title: '排序', width: 80, align: 'center'},
+                    {field: 'remark', title: '备注', minWidth: 200},
+                    {title: '操作', toolbar: '#categoryBar', width: 130, align: 'center'}
+                ]]
+            });
+        }
+
+        function rateBar(cap, used) {
+            cap = Number(cap || 0); used = Number(used || 0);
+            var pct = cap ? Math.min(100, Math.round(used * 100 / cap)) : 0;
+            var color = pct >= 90 ? '#e13c3c' : '#2f7ef7';
+            return '<div class="bar"><i style="width:' + pct + '%;background:' + color + '"></i>'
+                    + '<span>' + pct + '%</span></div>';
+        }
+
+        function renderLocation() {
+            var where = form.val('locSearch');
+            locationIns = table.render({
+                elem: '#locationTable', url: '/api/archive/location/list', method: 'get',
+                where: where, page: false, height: 430,
+                cols: [[
+                    {field: 'locationCode', title: '位置编号', width: 120},
+                    {field: 'officeRoom', title: '办公室', width: 150},
+                    {field: 'cabinetNo', title: '柜号', minWidth: 180},
+                    {field: 'layerNo', title: '层号', width: 90},
+                    {field: 'folderNo', title: '文件夹', minWidth: 180},
+                    {field: 'capacity', title: '容量(卷)', width: 90, align: 'right'},
+                    {field: 'usedCount', title: '已用(卷)', width: 90, align: 'right'},
+                    {title: '使用率', width: 130, align: 'center', templet: function (r) {
+                            return rateBar(r.capacity, r.usedCount);
+                        }},
+                    {title: '操作', toolbar: '#locationBar', width: 190, align: 'center'}
+                ]]
+            });
+        }
+
+        function renderOfficeCards() {
+            $.get('/api/archive/location/office-stats', function (res) {
+                if (res.code !== 0) return;
+                var html = '';
+                (res.data || []).forEach(function (o) {
+                    html += '<div class="office-card"><b>' + o.officeRoom + '</b>'
+                            + '<div style="margin-top:6px"><span class="num">' + (o.usedCount || 0)
+                            + '</span> / ' + (o.capacity || 0) + ' 卷</div>'
+                            + '<div class="sub">柜子 ' + (o.cabinetCount || 0) + ' 个 · 文件夹 '
+                            + (o.locationCount || 0) + ' 个 · 使用率 ' + (o.rate || 0) + '%</div>'
+                            + '<div class="sub">' + rateBar(o.capacity, o.usedCount) + '</div></div>';
+                });
+                $('#officeCards').html(html || '<span class="layui-word-aux">暂无位置数据</span>');
+            });
+        }
+
+        var ICONS = {'办公室': 'layui-icon-home', '柜子': 'layui-icon-template-1',
+            '层': 'layui-icon-align-center', '文件夹': 'layui-icon-form'};
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function treeHtml(nodes) {
+            var html = '';
+            (nodes || []).forEach(function (n) {
+                var leaf = !(n.children && n.children.length);
+                var cap = Number(n.capacity || 0), used = Number(n.usedCount || 0);
+                var pct = cap ? Math.min(100, Math.round(used * 100 / cap)) : 0;
+                var barColor = pct >= 90 ? '#e13c3c' : '#2f7ef7';
+                html += '<li>'
+                        + '<div class="node">'
+                        + '<span class="tree-toggle' + (leaf ? ' leaf' : '') + '">−</span>'
+                        + '<i class="layui-icon ' + (ICONS[n.nodeType] || 'layui-icon-form') + '"></i>'
+                        + '<span class="n-name">' + esc(n.name) + '</span>'
+                        + '<span class="n-badge">' + esc(n.nodeType || '') + '</span>';
+                if (n.locationCode) {
+                    html += '<span class="n-code">' + esc(n.locationCode) + '</span>';
+                }
+                html += '<span class="n-stat">已用 ' + used + ' / 容量 ' + cap + ' 卷</span>'
+                        + '<span class="mini-bar"><span class="bar"><i style="width:' + pct
+                        + '%;background:' + barColor + '"></i><span>' + pct + '%</span></span></span>';
+                if (n.locationCode) {
+                    html += '<span class="n-vol" data-code="' + esc(n.locationCode) + '">查看案卷</span>';
+                }
+                html += '</div>';
+                if (!leaf) {
+                    html += '<ul>' + treeHtml(n.children) + '</ul>';
+                }
+                html += '</li>';
+            });
+            return html;
+        }
+
+        function renderTree() {
+            renderOfficeCards();
+            $.get('/api/archive/location/tree', function (res) {
+                if (res.code !== 0) return;
+                $('#locTree').html('<ul class="loc-tree">' + treeHtml(res.data || []) + '</ul>');
+            });
+        }
+
+        $(document).on('click', '#locTree .tree-toggle:not(.leaf)', function () {
+            var $li = $(this).closest('li');
+            var $sub = $li.children('ul');
+            $sub.toggle();
+            $(this).text($sub.is(':visible') ? '−' : '+');
+        });
+        $(document).on('click', '#locTree .n-vol', function () {
+            window.open('/archive/volume?locationCode=' + encodeURIComponent($(this).data('code')), '_blank');
+        });
+
+        // 首屏只渲染当前可见的页签，切到哪个再渲染哪个（隐藏页签里宽度为 0，列宽会算错）
+        renderCategory();
+
+        element.on('tab(basicTab)', function (data) {
+            if (data.index === 1) {
+                loadLocationOptions(function () {
+                    if (!locationIns) renderLocation();
+                    else { table.reload('locationTable', {where: form.val('locSearch')}); }
+                });
+            } else if (data.index === 2) {
+                renderTree();
+            } else if (categoryIns) {
+                setTimeout(function () { table.resize('categoryTable'); }, 60);
+            }
+        });
+
+        function loadLocationOptions(cb) {
+            $.get('/api/archive/location/options', function (res) {
+                if (res.code !== 0) return;
+                locationCache = res.data.locations || [];
+                var html = '<option value="">全部</option>';
+                (res.data.offices || []).forEach(function (o) {
+                    html += '<option value="' + o.officeRoom + '">' + o.officeRoom + '</option>';
+                });
+                $('#sOffice').html(html);
+                fillCabinets();
+                $('#officeChips').html((res.data.offices || []).map(function (o) {
+                    return '<span class="chip" data-name="' + o.officeRoom + '">' + o.officeRoom + '</span>';
+                }).join(''));
+                form.render('select', 'locSearch');
+                if (cb) cb();
+            });
+        }
+
+        function fillCabinets() {
+            var office = $('#sOffice').val() || '';
+            var set = {}, arr = [];
+            locationCache.forEach(function (l) {
+                if (office && l.officeRoom !== office) return;
+                if (l.cabinetNo && !set[l.cabinetNo]) { set[l.cabinetNo] = 1; arr.push(l.cabinetNo); }
+            });
+            var html = '<option value="">全部</option>';
+            arr.forEach(function (v) { html += '<option value="' + v + '">' + v + '</option>'; });
+            $('#sCabinet').html(html);
+            form.render('select', 'locSearch');
+        }
+
+        form.on('select(sOffice)', function () { fillCabinets(); });
+
+        $(document).on('click', '#officeChips .chip', function () {
+            $('input[name="officeRoom"]').val($(this).data('name'));
+        });
+
+        $('#locSearchBtn').on('click', function () {
+            if (locationIns) table.reload('locationTable', {where: form.val('locSearch'), page: {curr: 1}});
+        });
+        $('#locResetBtn').on('click', function () {
+            form.val('locSearch', {officeRoom: '', cabinetNo: '', folderNo: ''});
+            fillCabinets();
+            if (locationIns) table.reload('locationTable', {where: {}, page: {curr: 1}});
+        });
+
+        // ---------------------------------------------------------------- 门类
+        $('#addCategoryBtn').on('click', function () {
+            layer.open({
+                type: 1, title: '新增门类', area: ['700px', '380px'], content: $('#categoryForm'),
+                success: function () {
+                    form.val('categoryEdit', {
+                        id: '', categoryCode: '', categoryName: '', keeperDept: '',
+                        retention: '30年', seq: 99, remark: ''
+                    });
+                    form.render('select');
+                }
+            });
+        });
+        $('#categoryCancel').on('click', function () { layer.closeAll('page'); });
+
+        form.on('submit(categorySubmit)', function (obj) {
+            var data = obj.field;
+            data.seq = Number(data.seq || 99);
+            $.ajax({
+                url: '/api/archive/category/save', type: 'post', contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.msg('保存成功');
+                    layer.closeAll('page');
+                    renderCategory();
+                }
+            });
+        });
+
+        table.on('tool(categoryTable)', function (obj) {
+            if (obj.event === 'edit') {
+                layer.open({
+                    type: 1, title: '编辑门类', area: ['700px', '380px'], content: $('#categoryForm'),
+                    success: function () {
+                        form.val('categoryEdit', obj.data);
+                        form.render('select');
+                    }
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除门类「' + obj.data.categoryName + '」？', function (index) {
+                    $.post('/api/archive/category/delete', {id: obj.data.id}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '删除失败'); return; }
+                        layer.msg('已删除');
+                        layer.close(index);
+                        renderCategory();
+                    });
+                });
+            }
+        });
+
+        // ---------------------------------------------------------------- 位置
+        $('#addLocationBtn').on('click', function () {
+            layer.open({
+                type: 1, title: '新增存放位置', area: ['720px', '440px'], content: $('#locationForm'),
+                success: function () {
+                    form.val('locationEdit', {
+                        id: '', officeRoom: '', locationCode: '', cabinetNo: '',
+                        layerNo: '第1层', folderNo: '', capacity: 10, remark: ''
+                    });
+                }
+            });
+        });
+        $('#locationCancel').on('click', function () { layer.closeAll('page'); });
+
+        form.on('submit(locationSubmit)', function (obj) {
+            var data = obj.field;
+            data.capacity = Number(data.capacity || 0);
+            $.ajax({
+                url: '/api/archive/location/save', type: 'post', contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.msg('保存成功：' + (res.data && res.data.locationCode || ''));
+                    layer.closeAll('page');
+                    loadLocationOptions(function () {
+                        if (locationIns) table.reload('locationTable', {where: form.val('locSearch')});
+                    });
+                }
+            });
+        });
+
+        table.on('tool(locationTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                layer.open({
+                    type: 1, title: '编辑存放位置', area: ['720px', '440px'], content: $('#locationForm'),
+                    success: function () { form.val('locationEdit', row); }
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除位置「' + row.locationCode + ' ' + row.officeRoom + ' '
+                        + row.cabinetNo + ' ' + row.folderNo + '」？', function (index) {
+                    $.post('/api/archive/location/delete', {id: row.id}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '删除失败'); return; }
+                        layer.msg('已删除');
+                        layer.close(index);
+                        loadLocationOptions(function () { renderLocation(); });
+                    });
+                });
+            } else if (obj.event === 'volumes') {
+                window.open('/archive/volume?locationCode=' + encodeURIComponent(row.locationCode), '_blank');
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            if (categoryIns) table.resize('categoryTable');
+            if (locationIns) table.resize('locationTable');
+        });
+    });
+</script>
+</body>
+</html>

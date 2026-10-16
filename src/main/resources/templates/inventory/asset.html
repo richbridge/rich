@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>固定资产台账</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .qr-box { width: 180px; height: 180px; margin: 0 auto 10px; padding: 6px; background: #fff; }
+        .qr-box img, .qr-box canvas { width: 100% !important; height: 100% !important; }
+        .qr-code-text { text-align: center; font-family: Consolas, monospace; font-size: 13px; color: #333; }
+        .no-qr { color: #e13c3c; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:200px">
+                        <input type="text" name="keywords" placeholder="名称 / 编号 / 规格 / 码值 / 保管人"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:140px">
+                        <select name="category" id="searchCategory">
+                            <option value="">全部分类</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:140px">
+                        <select name="useDept" id="searchDept">
+                            <option value="">全部部门</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="在用">在用</option>
+                            <option value="闲置">闲置</option>
+                            <option value="维修">维修</option>
+                            <option value="借出">借出</option>
+                            <option value="报废">报废</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="assetTable" lay-filter="assetTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="listToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新增资产</button>
+        <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="genQr">批量赋码</button>
+        <button class="layui-btn layui-btn-sm layui-btn-primary" lay-event="labels">标签打印</button>
+    </div>
+</script>
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="qr">二维码</a>
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="formWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="editForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">资产编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="assetCode" lay-verify="required" placeholder="如 GD-2026-0001"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">二维码码值</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="qrCode" placeholder="留空自动生成 AST-编号"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">资产名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="assetName" lay-verify="required" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">资产分类</label>
+                    <div class="layui-input-block">
+                        <select name="category" id="formCategory">
+                            <option value="房屋建筑物">房屋建筑物</option>
+                            <option value="机器设备">机器设备</option>
+                            <option value="运输设备">运输设备</option>
+                            <option value="电子设备">电子设备</option>
+                            <option value="办公家具">办公家具</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">规格型号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="spec" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计量单位</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="unit" placeholder="台 / 套 / 件" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">数量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="quantity" value="1" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">购置日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="buyDate" id="buyDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">资产原值</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="originalValue" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">资产净值</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="netValue" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">使用部门</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="useDept" id="formDept" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">存放地点</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="location" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">保管人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="custodian" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="在用">在用</option>
+                            <option value="闲置">闲置</option>
+                            <option value="维修">维修</option>
+                            <option value="借出">借出</option>
+                            <option value="报废">报废</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<div id="qrWrap" style="display:none;padding:20px;text-align:center">
+    <div class="qr-box" id="qrBox"></div>
+    <div class="qr-code-text" id="qrText"></div>
+    <div style="margin-top:12px;color:#888;font-size:13px" id="qrName"></div>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/qrcode/qrcode.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate;
+        var idx = null;
+
+        laydate.render({elem: '#buyDate', type: 'date'});
+        form.render();
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? v : n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // 分类与部门下拉：取自库里已有数据，新增资产时不用重复维护字典
+        $.get('/api/inventory/asset/options', function (res) {
+            if (res.code !== 0 || !res.data) return;
+            var cats = res.data.categories || [], depts = res.data.depts || [];
+            cats.forEach(function (c) {
+                $('#searchCategory').append('<option value="' + c + '">' + c + '</option>');
+            });
+            depts.forEach(function (d) {
+                $('#searchDept').append('<option value="' + d + '">' + d + '</option>');
+            });
+            form.render('select');
+        });
+
+        table.render({
+            elem: '#assetTable', url: '/api/inventory/asset/list', method: 'get',
+            toolbar: '#listToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50, 100],
+            cols: [[
+                {field: 'assetCode', title: '资产编号', width: 130, sort: true},
+                {field: 'assetName', title: '资产名称', minWidth: 160},
+                {field: 'category', title: '分类', width: 100, align: 'center'},
+                {field: 'spec', title: '规格型号', minWidth: 130},
+                {field: 'quantity', title: '数量', width: 80, align: 'right'},
+                {field: 'originalValue', title: '原值(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.originalValue); }},
+                {field: 'netValue', title: '净值(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.netValue); }},
+                {field: 'useDept', title: '使用部门', width: 120},
+                {field: 'location', title: '存放地点', width: 130},
+                {field: 'custodian', title: '保管人', width: 90},
+                {field: 'qrCode', title: '二维码码值', width: 160,
+                    templet: function (r) {
+                        return r.qrCode
+                                ? '<span style="font-family:Consolas,monospace">' + r.qrCode + '</span>'
+                                : '<span class="no-qr">未赋码</span>';
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '在用' ? 'layui-bg-green'
+                                : (r.status === '报废' ? '' : 'layui-bg-blue');
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 200, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('assetTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#resetBtn').on('click', function () {
+            $('#searchCategory,#searchDept').val('');
+            $('input[name=keywords]').val('');
+            $('select[name=status]').val('');
+            form.render('select');
+            table.reload('assetTable', {where: {keywords: '', category: '', useDept: '', status: ''}, page: {curr: 1}});
+        });
+
+        table.on('toolbar(assetTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+            else if (obj.event === 'genQr') {
+                $.post('/api/inventory/qrcode/generate', {type: 'ASSET'}, function (res) {
+                    layer.msg(res.code === 0 ? ('已生成 ' + res.data + ' 个码值') : (res.msg || '生成失败'));
+                    table.reload('assetTable');
+                });
+            } else if (obj.event === 'labels') {
+                location.href = '/inventory/label?type=ASSET';
+            }
+        });
+
+        table.on('tool(assetTable)', function (obj) {
+            if (obj.event === 'edit') openForm(obj.data);
+            else if (obj.event === 'qr') showQr(obj.data);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除资产「' + obj.data.assetName + '」？', function (i) {
+                    layer.close(i);
+                    $.post('/api/inventory/asset/delete', {id: obj.data.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('assetTable');
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('editForm', {
+                id: d.id || '', assetCode: d.assetCode || '', qrCode: d.qrCode || '',
+                assetName: d.assetName || '', category: d.category || '机器设备',
+                spec: d.spec || '', unit: d.unit || '台',
+                quantity: d.quantity === undefined ? 1 : d.quantity,
+                buyDate: d.buyDate || '', originalValue: d.originalValue || '',
+                netValue: d.netValue || '', useDept: d.useDept || '', location: d.location || '',
+                custodian: d.custodian || '', status: d.status || '在用', remark: d.remark || ''
+            });
+            idx = layer.open({
+                type: 1, title: row ? '编辑资产' : '新增资产',
+                area: ['760px', '600px'], content: $('#formWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        function showQr(row) {
+            if (!row.qrCode) {
+                layer.msg('该资产尚未赋码，请先批量赋码');
+                return;
+            }
+            $('#qrBox').html('');
+            $('#qrText').text(row.qrCode);
+            $('#qrName').text(row.assetName + '（' + (row.spec || '') + '）');
+            idx = layer.open({
+                type: 1, title: '资产二维码', area: ['280px', '360px'], content: $('#qrWrap'),
+                success: function () {
+                    new QRCode(document.getElementById('qrBox'), {
+                        text: row.qrCode, width: 168, height: 168,
+                        colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M
+                    });
+                },
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#cancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.quantity = Number(f.quantity || 0);
+            f.originalValue = f.originalValue === '' ? null : Number(f.originalValue);
+            f.netValue = f.netValue === '' ? null : Number(f.netValue);
+            $.ajax({
+                url: '/api/inventory/asset/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(f),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('assetTable');
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

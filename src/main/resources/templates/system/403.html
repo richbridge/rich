@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>无访问权限</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; }
+
+        .forbid-wrap {
+            max-width: 520px;
+            margin: 120px auto;
+            text-align: center;
+            padding: 40px 24px;
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+        }
+
+        .forbid-wrap .forbid-icon {
+            font-size: 72px;
+            color: #AA3130;
+            line-height: 1;
+        }
+
+        .forbid-wrap h2 {
+            margin: 18px 0 8px;
+            font-size: 22px;
+            color: #333;
+        }
+
+        .forbid-wrap p {
+            color: #8a8f99;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="forbid-wrap">
+    <i class="layui-icon layui-icon-close-fill forbid-icon"></i>
+    <h2>没有访问权限</h2>
+    <p>当前账号未被授予该页面或接口的权限。<br>
+        请联系系统管理员在「角色权限」中为所在角色勾选对应资源。</p>
+    <p style="margin-top: 18px;">
+        <button class="layui-btn layui-btn-primary" onclick="history.back();">返回上一页</button>
+    </p>
+</div>
+
+</body>
+</html>

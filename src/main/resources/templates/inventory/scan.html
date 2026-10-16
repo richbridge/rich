@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>扫码盘点</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .scan-panel { background: #fff; padding: 18px; border-radius: 4px; }
+        .code-input { height: 52px !important; font-size: 20px !important;
+            font-family: Consolas, monospace; letter-spacing: 1px; }
+        .subject-card { background: #f7f9fc; border: 1px solid #e6ebf2; border-radius: 4px;
+            padding: 14px 16px; margin-top: 14px; min-height: 120px; }
+        .subject-card.empty { color: #9aa1ab; text-align: center; padding-top: 46px; }
+        .subject-name { font-size: 18px; font-weight: 600; color: #1f2d3d; }
+        .subject-meta { color: #7a869a; font-size: 13px; margin-top: 6px; line-height: 22px; }
+        .book-qty { font-size: 26px; font-weight: 700; color: #2f7ef7; }
+        .hit-ok { color: #18a058; font-weight: 600; }
+        .hit-profit { color: #e13c3c; font-weight: 600; }
+        .hit-loss { color: #18a058; font-weight: 600; }
+        .log-row { padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
+        .log-row:last-child { border-bottom: none; }
+        .right-panel { background: #fff; padding: 14px; border-radius: 4px; }
+        .stat-mini { display: inline-block; min-width: 80px; text-align: center; padding: 0 10px; }
+        .stat-mini .v { font-size: 22px; font-weight: 700; }
+        .stat-mini .t { color: #9aa1ab; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md7">
+            <div class="scan-panel">
+                <form class="layui-form" lay-filter="scanForm">
+                    <div class="layui-row layui-col-space10">
+                        <div class="layui-col-md7">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label" style="width:70px;padding-left:0">盘点任务</label>
+                                <div class="layui-input-block" style="margin-left:78px">
+                                    <select name="taskId" id="taskSel" lay-filter="taskSel" lay-search>
+                                        <option value="">请选择盘点任务</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="layui-col-md5">
+                            <div class="layui-form-item">
+                                <label class="layui-form-label" style="width:60px;padding-left:0">盘点人</label>
+                                <div class="layui-input-block" style="margin-left:68px">
+                                    <input type="text" name="checker" id="checker" placeholder="必填"
+                                           autocomplete="off" class="layui-input">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="layui-form-item">
+                        <label class="layui-form-label" style="width:70px;padding-left:0">扫码</label>
+                        <div class="layui-input-block" style="margin-left:78px">
+                            <input type="text" id="codeInput" placeholder="用扫码枪扫描标签，或手工输入码值后回车"
+                                   autocomplete="off" class="layui-input code-input">
+                        </div>
+                    </div>
+
+                    <div id="subjectCard" class="subject-card empty">
+                        扫描或输入码值后，这里显示标的的账面信息
+                    </div>
+
+                    <div class="layui-form-item" style="margin-top:14px">
+                        <label class="layui-form-label" style="width:70px;padding-left:0">实盘数量</label>
+                        <div class="layui-input-inline" style="width:160px">
+                            <input type="number" id="actualQty" step="0.001" placeholder="0"
+                                   autocomplete="off" class="layui-input" style="height:42px;font-size:18px">
+                        </div>
+                        <button type="button" class="layui-btn layui-btn-normal" id="submitBtn"
+                                style="height:42px">登记（Enter）</button>
+                        <button type="button" class="layui-btn layui-btn-primary" id="clearBtn"
+                                style="height:42px">清空</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="layui-col-md5">
+            <div class="right-panel">
+                <div id="statMini" style="text-align:center;padding:6px 0 12px">
+                    <span class="stat-mini"><span class="t">应盘</span><br><span class="v" id="mSubject">0</span></span>
+                    <span class="stat-mini"><span class="t">已盘</span><br><span class="v" id="mChecked">0</span></span>
+                    <span class="stat-mini"><span class="t">盘盈</span><br><span class="v" id="mProfit" style="color:#e13c3c">0</span></span>
+                    <span class="stat-mini"><span class="t">盘亏</span><br><span class="v" id="mLoss" style="color:#18a058">0</span></span>
+                </div>
+                <div style="border-top:1px solid #eee;padding-top:10px">
+                    <div style="font-weight:600;margin-bottom:6px">本次盘点流水（最新 15 条）</div>
+                    <div id="logBox" style="max-height:420px;overflow:auto">
+                        <div style="color:#9aa1ab;padding:20px 0;text-align:center">暂无记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['form', 'layer', 'jquery'], function () {
+        var form = layui.form, layer = layui.layer, $ = layui.jquery;
+
+        var urlTaskId = new URLSearchParams(location.search).get('taskId');
+        var currentTaskId = urlTaskId ? urlTaskId : '';
+        var currentCode = '';
+        var logs = [];
+
+        function typeLabel(t) {
+            return t === 'ASSET' ? '固定资产' : (t === 'GOODS' ? '库存物资' : (t === 'CANTEEN' ? '食堂物资' : '-'));
+        }
+
+        $.get('/api/inventory/task/all', function (res) {
+            if (res.code !== 0) return;
+            var list = res.data || [];
+            list.forEach(function (t) {
+                $('#taskSel').append('<option value="' + t.id + '">' + t.taskNo + ' · ' + t.taskName + '</option>');
+            });
+            if (!currentTaskId) {
+                var running = list.filter(function (t) { return t.status === '进行中'; });
+                currentTaskId = running.length ? running[0].id : (list.length ? list[0].id : '');
+            }
+            $('#taskSel').val(currentTaskId);
+            form.render('select');
+            if (currentTaskId) loadStat(currentTaskId);
+        });
+
+        form.on('select(taskSel)', function (obj) {
+            currentTaskId = obj.value;
+            logs = [];
+            renderLogs();
+            loadStat(currentTaskId);
+            $('#codeInput').focus();
+        });
+
+        function loadStat(taskId) {
+            if (!taskId) return;
+            $.get('/api/inventory/task/stat', {id: taskId}, function (res) {
+                if (res.code !== 0 || !res.data) return;
+                var d = res.data;
+                $('#mSubject').text(d.subjectCount || 0);
+                $('#mChecked').text(d.checkedCount || 0);
+                $('#mProfit').text(d.profitCount || 0);
+                $('#mLoss').text(d.lossCount || 0);
+            });
+        }
+
+        // 扫码枪以回车结束输入，这里直接触发解析
+        $('#codeInput').on('keydown', function (e) {
+            if (e.keyCode === 13) {
+                e.preventDefault();
+                resolveCode();
+            }
+        });
+
+        $('#codeInput').on('input', function () {
+            var v = $(this).val().trim();
+            // 粘贴长码时也能自动识别
+            if (v.length >= 6 && v !== currentCode) {
+                currentCode = v;
+                resolveCode();
+            }
+        });
+
+        function resolveCode() {
+            var code = $('#codeInput').val().trim();
+            currentCode = code;
+            if (!code) return;
+            if (!currentTaskId) {
+                layer.msg('请先选择盘点任务');
+                return;
+            }
+            $.get('/api/inventory/scan', {code: code, taskId: currentTaskId}, function (res) {
+                if (res.code !== 0) {
+                    $('#subjectCard').addClass('empty').html('未找到「' + code
+                            + '」对应的资产或物资<br><span style="font-size:12px">'
+                            + '请确认标签是否已赋码，或到台账页手工补录</span>');
+                    return;
+                }
+                var d = res.data;
+                var checkedText = '';
+                if (d.checked && d.actualQty !== null && d.actualQty !== undefined) {
+                    var diff = Number(d.actualQty) - Number(d.bookQty);
+                    var cls = diff === 0 ? 'hit-ok' : (diff > 0 ? 'hit-profit' : 'hit-loss');
+                    var txt = diff === 0 ? '相符' : (diff > 0 ? '盘盈 +' + diff : '盘亏 ' + diff);
+                    checkedText = '　<span class="' + cls + '">已登记：' + d.actualQty + '（' + txt + '）</span>';
+                }
+                $('#subjectCard').removeClass('empty').html(
+                        '<div class="subject-name">' + d.name + '　<span style="font-size:13px;color:#7a869a">'
+                        + typeLabel(d.subjectType) + '</span>' + checkedText + '</div>'
+                        + '<div class="subject-meta">编码 ' + (d.code || '-') + '　规格 ' + (d.spec || '-')
+                        + '　单位 ' + (d.unit || '-') + '<br>分类 ' + (d.category || '-')
+                        + '　存放 ' + (d.location || '-') + '　保管人 ' + (d.custodian || '-') + '</div>'
+                        + '<div class="subject-meta">账面数量 <span class="book-qty">' + d.bookQty + '</span>'
+                        + '　单价 ' + (d.unitPrice || 0) + ' 元</div>');
+                $('#actualQty').val(d.actualQty === null || d.actualQty === undefined ? d.bookQty : d.actualQty);
+                $('#actualQty').focus();
+                $('#actualQty').select();
+            });
+        }
+
+        $('#actualQty').on('keydown', function (e) {
+            if (e.keyCode === 13) {
+                e.preventDefault();
+                submitCheck();
+            }
+        });
+        $('#submitBtn').on('click', submitCheck);
+        $('#clearBtn').on('click', function () {
+            $('#codeInput').val('');
+            $('#actualQty').val('');
+            currentCode = '';
+            $('#subjectCard').addClass('empty').html('扫描或输入码值后，这里显示标的的账面信息');
+            $('#codeInput').focus();
+        });
+
+        function submitCheck() {
+            var code = $('#codeInput').val().trim();
+            var qty = $('#actualQty').val();
+            var checker = $('#checker').val().trim();
+            if (!currentTaskId) { layer.msg('请先选择盘点任务'); return; }
+            if (!code) { layer.msg('请先扫码或输入码值'); return; }
+            if (qty === '') { layer.msg('请填写实盘数量'); return; }
+            if (!checker) { layer.msg('请填写盘点人'); $('#checker').focus(); return; }
+            $.ajax({
+                url: '/api/inventory/scan/submit', type: 'post',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    taskId: Number(currentTaskId), code: code, actualQty: Number(qty),
+                    checker: checker, source: 'PC扫码'
+                }),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '登记失败'); return; }
+                    var name = $('#subjectCard').find('.subject-name').text().split('　')[0];
+                    logs.unshift({
+                        code: code, name: name, qty: qty,
+                        time: new Date().toLocaleTimeString('zh-CN')
+                    });
+                    renderLogs();
+                    loadStat(currentTaskId);
+                    $('#codeInput').val('').focus();
+                    $('#actualQty').val('');
+                    $('#subjectCard').addClass('empty').html('扫描或输入码值后，这里显示标的的账面信息');
+                    currentCode = '';
+                    layer.msg('已登记', {time: 800});
+                }
+            });
+        }
+
+        function renderLogs() {
+            if (!logs.length) {
+                $('#logBox').html('<div style="color:#9aa1ab;padding:20px 0;text-align:center">暂无记录</div>');
+                return;
+            }
+            var html = '';
+            logs.slice(0, 15).forEach(function (l, i) {
+                html += '<div class="log-row"><span style="color:#2f7ef7;font-weight:600">'
+                        + (i === 0 ? '● ' : '') + '</span>' + l.name
+                        + '　<span style="color:#9aa1ab;font-family:Consolas">' + l.code + '</span>'
+                        + '　实盘 <b>' + l.qty + '</b>'
+                        + '　<span style="color:#bbb;float:right">' + l.time + '</span></div>';
+            });
+            $('#logBox').html(html);
+        }
+
+        $('#codeInput').focus();
+    });
+</script>
+</body>
+</html>

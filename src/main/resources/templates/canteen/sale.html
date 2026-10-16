@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>就餐收入</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="mealType">
+                            <option value="">全部餐次</option>
+                            <option value="早餐">早餐</option>
+                            <option value="午餐">午餐</option>
+                            <option value="晚餐">晚餐</option>
+                            <option value="夜宵">夜宵</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:130px">
+                        <select name="customerType">
+                            <option value="">全部类型</option>
+                            <option value="职工餐">职工餐</option>
+                            <option value="加班餐">加班餐</option>
+                            <option value="客饭">客饭</option>
+                            <option value="接待餐">接待餐</option>
+                            <option value="外来人员">外来人员</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="草稿">草稿</option>
+                            <option value="已确认">已确认</option>
+                            <option value="已记账">已记账</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="month">
+                            <option value="">全部月份</option>
+                            <option value="1">1月</option>
+                            <option value="2">2月</option>
+                            <option value="3">3月</option>
+                            <option value="4">4月</option>
+                            <option value="5">5月</option>
+                            <option value="6">6月</option>
+                            <option value="7">7月</option>
+                            <option value="8">8月</option>
+                            <option value="9">9月</option>
+                            <option value="10">10月</option>
+                            <option value="11">11月</option>
+                            <option value="12">12月</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="saleTable" lay-filter="saleTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="listToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">登记就餐收入</button>
+        <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="batch">按日期批量生成</button>
+    </div>
+</script>
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{# if(d.status === '草稿'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="post">确认</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="formWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="editForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">单据编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="saleNo" id="saleNo" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">营业日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="bizDate" id="bizDate" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">餐次</label>
+                    <div class="layui-input-block">
+                        <select name="mealType">
+                            <option value="早餐">早餐</option>
+                            <option value="午餐">午餐</option>
+                            <option value="晚餐">晚餐</option>
+                            <option value="夜宵">夜宵</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">就餐类型</label>
+                    <div class="layui-input-block">
+                        <select name="customerType">
+                            <option value="职工餐">职工餐</option>
+                            <option value="加班餐">加班餐</option>
+                            <option value="客饭">客饭</option>
+                            <option value="接待餐">接待餐</option>
+                            <option value="外来人员">外来人员</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">就餐窗口</label>
+                    <div class="layui-input-block">
+                        <select name="windowName">
+                            <option value="职工餐厅">职工餐厅</option>
+                            <option value="接待餐厅">接待餐厅</option>
+                            <option value="窗口一">窗口一</option>
+                            <option value="窗口二">窗口二</option>
+                            <option value="夜班窗口">夜班窗口</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">就餐人次</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="peopleCount" id="peopleCount" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">每人标准</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="unitPrice" id="unitPrice" step="0.01" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">收款方式</label>
+                    <div class="layui-input-block">
+                        <select name="payType">
+                            <option value="饭卡">饭卡</option>
+                            <option value="扫码支付">扫码支付</option>
+                            <option value="现金">现金</option>
+                            <option value="签单挂账">签单挂账</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实收金额</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="actualAmount" id="actualAmount" step="0.01" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">应收合计</label>
+                    <div class="layui-input-block">
+                        <input type="text" id="receivable" readonly class="layui-input" style="background:#f7f8fa">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="草稿">草稿</option>
+                            <option value="已确认">已确认</option>
+                            <option value="已记账">已记账</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">收银员</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="operator" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 批量生成 -->
+<div id="batchWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="batchForm">
+        <div class="layui-form-item">
+            <label class="layui-form-label">日期范围</label>
+            <div class="layui-input-block">
+                <input type="text" id="batchRange" placeholder="选择起止日期" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">餐次</label>
+                    <div class="layui-input-block">
+                        <input type="checkbox" name="mealType" value="早餐" title="早餐">
+                        <input type="checkbox" name="mealType" value="午餐" title="午餐" checked>
+                        <input type="checkbox" name="mealType" value="晚餐" title="晚餐" checked>
+                        <input type="checkbox" name="mealType" value="夜宵" title="夜宵">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">就餐类型</label>
+                    <div class="layui-input-block">
+                        <select name="customerType">
+                            <option value="职工餐">职工餐</option>
+                            <option value="加班餐">加班餐</option>
+                            <option value="客饭">客饭</option>
+                            <option value="外来人员">外来人员</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">每人次标准</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="unitPrice" step="0.01" value="8" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">每人次实收</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="actualAmount" step="0.01" value="3" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">平均人次</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="peopleCount" value="120" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">收款方式</label>
+            <div class="layui-input-block">
+                <select name="payType">
+                    <option value="饭卡">饭卡</option>
+                    <option value="扫码支付">扫码支付</option>
+                    <option value="现金">现金</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block" style="margin-left:0">
+                <div class="layui-word-aux">
+                    人次在平均值上下浮动 ±8% 生成，避免数据过于整齐；已存在的「日期 + 餐次 + 类型」记录会跳过
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="batchSubmit">生成</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="batchCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate;
+        var idx = null, batchIdx = null;
+        form.render();
+        laydate.render({elem: '#bizDate', value: new Date()});
+        laydate.render({elem: '#batchRange', range: true, value: getMonthRange()});
+
+        function getMonthRange() {
+            var now = new Date();
+            var y = now.getFullYear(), m = now.getMonth() + 1;
+            var last = new Date(y, m, 0).getDate();
+            return y + '-' + pad(m) + '-01 ~ ' + y + '-' + pad(m) + '-' + last;
+        }
+        function pad(n) { return n < 10 ? '0' + n : n; }
+
+        function money(v) {
+            return Number(v || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        table.render({
+            elem: '#saleTable', url: '/api/canteen/sale/list', method: 'get',
+            toolbar: '#listToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50],
+            cols: [[
+                {field: 'saleNo', title: '单据编号', width: 130, sort: true},
+                {field: 'bizDate', title: '营业日期', width: 110, align: 'center', sort: true},
+                {field: 'mealType', title: '餐次', width: 80, align: 'center'},
+                {field: 'customerType', title: '就餐类型', width: 100, align: 'center'},
+                {field: 'windowName', title: '就餐窗口', width: 110},
+                {field: 'peopleCount', title: '人次', width: 80, align: 'center', sort: true},
+                {field: 'unitPrice', title: '标准(元/人)', width: 110, align: 'right',
+                    templet: function (r) { return Number(r.unitPrice || 0).toFixed(2); }},
+                {field: 'actualAmount', title: '实收(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.actualAmount); }},
+                {field: 'subsidyAmount', title: '餐补(元)', width: 120, align: 'right',
+                    templet: function (r) {
+                        return '<span style="color:#18a058">' + money(r.subsidyAmount) + '</span>';
+                    }},
+                {field: 'receivable', title: '应收(元)', minWidth: 120, align: 'right', sort: true,
+                    templet: function (r) {
+                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.receivable) + '</span>';
+                    }},
+                {field: 'payType', title: '收款方式', width: 100, align: 'center'},
+                {field: 'operator', title: '收银员', width: 90},
+                {field: 'status', title: '状态', width: 100, align: 'center',
+                    templet: function (r) {
+                        return '<span class="layui-badge ' + (r.status === '草稿' ? '' : 'layui-bg-green')
+                                + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 190, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('saleTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('saleTable', {
+                    where: {mealType: '', customerType: '', status: '', month: ''}, page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        table.on('toolbar(saleTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+            else if (obj.event === 'batch') openBatch();
+        });
+
+        table.on('tool(saleTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') openForm(row);
+            else if (obj.event === 'post') {
+                $.post('/api/canteen/sale/post', {id: row.id}, function (res) {
+                    layer.msg(res.code === 0 ? res.data : (res.msg || '操作失败'));
+                    table.reload('saleTable');
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除该收入记录？', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/sale/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('saleTable');
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            if (!d.id) {
+                $.ajax({
+                    url: '/api/canteen/sale/next-no', async: false,
+                    success: function (res) { $('#saleNo').val(res.code === 0 ? res.data : ''); }
+                });
+                $('#bizDate').val(new Date().toISOString().slice(0, 10));
+            }
+            form.val('editForm', {
+                id: d.id || '', saleNo: d.saleNo || $('#saleNo').val(),
+                mealType: d.mealType || '午餐', customerType: d.customerType || '职工餐',
+                windowName: d.windowName || '职工餐厅', payType: d.payType || '饭卡',
+                peopleCount: d.peopleCount || '', unitPrice: d.unitPrice || '',
+                actualAmount: d.actualAmount || '', operator: d.operator || '',
+                status: d.status || '草稿', remark: d.remark || ''
+            });
+            if (d.bizDate) $('#bizDate').val(d.bizDate);
+            calcReceivable();
+            idx = layer.open({
+                type: 1, title: row ? '编辑就餐收入' : '登记就餐收入',
+                area: ['860px', '560px'], content: $('#formWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        function calcReceivable() {
+            var p = Number($('#peopleCount').val() || 0);
+            var u = Number($('#unitPrice').val() || 0);
+            $('#receivable').val((p * u).toFixed(2));
+        }
+        $(document).on('input', '#peopleCount', calcReceivable);
+        $(document).on('input', '#unitPrice', calcReceivable);
+
+        $('#cancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.peopleCount = Number(f.peopleCount || 0);
+            f.unitPrice = Number(f.unitPrice || 0);
+            f.actualAmount = f.actualAmount === '' ? 0 : Number(f.actualAmount);
+            $.ajax({
+                url: '/api/canteen/sale/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(f),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('saleTable');
+                }
+            });
+            return false;
+        });
+
+        function openBatch() {
+            batchIdx = layer.open({
+                type: 1, title: '按日期批量生成就餐收入', area: ['680px', '560px'],
+                content: $('#batchWrap'), end: function () { batchIdx = null; }
+            });
+        }
+        $('#batchCancel').on('click', function () { layer.close(batchIdx); });
+
+        form.on('submit(batchSubmit)', function (obj) {
+            var range = $('#batchRange').val().split(' ~ ');
+            if (range.length < 2) { layer.msg('请选择日期范围'); return false; }
+            var meals = [];
+            $('input[name="mealType"]:checked').each(function () { meals.push($(this).val()); });
+            if (meals.length === 0) { layer.msg('请至少选择一个餐次'); return false; }
+            $.ajax({
+                url: '/api/canteen/sale/batch', type: 'post',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    startDate: range[0].trim(), endDate: range[1].trim(),
+                    mealTypes: meals, customerType: obj.field.customerType,
+                    unitPrice: Number(obj.field.unitPrice || 0),
+                    actualAmount: Number(obj.field.actualAmount || 0),
+                    peopleCount: Number(obj.field.peopleCount || 0),
+                    payType: obj.field.payType
+                }),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '生成失败'); return; }
+                    layer.close(batchIdx);
+                    layer.msg('已生成 ' + res.data + ' 条记录');
+                    table.reload('saleTable');
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>考试管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:220px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称 / 课程"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:130px;margin-bottom:0">
+                    <select name="examType">
+                        <option value="">全部类型</option>
+                        <option value="线上考试">线上考试</option>
+                        <option value="线下笔试">线下笔试</option>
+                        <option value="实操考核">实操考核</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="未发布">未发布</option>
+                        <option value="报名中">报名中</option>
+                        <option value="进行中">进行中</option>
+                        <option value="已结束">已结束</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="examTable" lay-filter="examTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="examToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增考试
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="examRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="scores">成绩</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="examFormWrap" style="display: none;">
+    <form class="layui-form" id="examForm" lay-filter="examForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">试卷编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="examNo" placeholder="如 KS2026-001" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">考试类型</label>
+                    <div class="layui-input-block">
+                        <select name="examType">
+                            <option value="线上考试">线上考试</option>
+                            <option value="线下笔试">线下笔试</option>
+                            <option value="实操考核">实操考核</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">考试名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">关联课程</label>
+            <div class="layui-input-block">
+                <select name="courseId" id="courseSel"></select>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">总分</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="totalScore" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">及格分</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="passScore" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">时长(分钟)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="duration" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">题目数</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="questionCount" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">考试日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="examDate" id="examDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="未发布">未发布</option>
+                            <option value="报名中">报名中</option>
+                            <option value="进行中">进行中</option>
+                            <option value="已结束">已结束</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="examSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="examCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 成绩子表 -->
+<div id="scoreWrap" style="display: none;">
+    <div style="padding: 6px 12px 0 12px;">
+        <table class="layui-hide" id="scoreTable" lay-filter="scoreTable"></table>
+    </div>
+</div>
+
+<script type="text/html" id="scoreToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>录入成绩
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="scoreRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="scoreFormWrap" style="display: none;">
+    <form class="layui-form" id="scoreForm" lay-filter="scoreForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+        <input type="hidden" name="examId">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">工号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="studentNo" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">学员姓名</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="studentName" lay-verify="required" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">所在部门</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dept" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">考试得分</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="score" step="0.5" lay-verify="required" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">考试日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="examDate" id="scoreExamDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">用时(分)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="usedMinutes" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">第几次</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="times" placeholder="留空自动累计" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="scoreSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="scoreCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+        var layerIndex = null;
+        var scoreIndex = null;
+        var scoreFormIndex = null;
+        var currentExam = null;
+
+        laydate.render({elem: '#examDate', type: 'date'});
+        laydate.render({elem: '#scoreExamDate', type: 'date'});
+
+        $.get('/api/train/course/all', function (res) {
+            var html = '<option value="">不关联课程</option>';
+            (res.data || []).forEach(function (c) {
+                html += '<option value="' + c.id + '">' + esc(c.courseNo + ' ' + c.name) + '</option>';
+            });
+            $('#courseSel').html(html);
+            form.render('select');
+        });
+
+        table.render({
+            elem: '#examTable',
+            url: '/api/train/exam/list',
+            method: 'get',
+            toolbar: '#examToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'examNo', title: '试卷编号', width: 120, sort: true},
+                {field: 'name', title: '考试名称', minWidth: 200},
+                {field: 'courseName', title: '关联课程', minWidth: 180},
+                {field: 'planName', title: '关联培训', minWidth: 180},
+                {field: 'examType', title: '类型', width: 100},
+                {field: 'totalScore', title: '总分', width: 70, align: 'center'},
+                {field: 'passScore', title: '及格分', width: 80, align: 'center'},
+                {field: 'duration', title: '时长(分)', width: 90, align: 'center'},
+                {field: 'questionCount', title: '题数', width: 70, align: 'center'},
+                {field: 'examDate', title: '考试日期', width: 110, align: 'center', sort: true},
+                {field: 'examineeCount', title: '应考', width: 70, align: 'center'},
+                {field: 'passCount', title: '合格', width: 70, align: 'center',
+                    templet: function (r) {
+                        return r.passCount > 0
+                            ? '<span style="color:#18a058;font-weight:600">' + r.passCount + '</span>' : '0';
+                    }},
+                {field: 'avgScore', title: '平均分', width: 90, align: 'center', sort: true,
+                    templet: function (r) {
+                        return r.avgScore === null || r.avgScore === undefined ? '—' : Number(r.avgScore).toFixed(1);
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已结束' ? 'layui-bg-green'
+                            : (r.status === '进行中' ? 'layui-bg-blue'
+                                : (r.status === '报名中' ? 'layui-bg-orange' : ''));
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 190, fixed: 'right', toolbar: '#examRowBar'}
+            ]]
+        });
+
+        // 成绩子表
+        table.render({
+            elem: '#scoreTable',
+            data: [],
+            toolbar: '#scoreToolbar',
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'studentNo', title: '工号', width: 100, align: 'center'},
+                {field: 'studentName', title: '学员', width: 100},
+                {field: 'dept', title: '部门', width: 130},
+                {field: 'score', title: '得分', width: 90, align: 'center', sort: true,
+                    templet: function (r) {
+                        if (r.score === null || r.score === undefined) return '—';
+                        return Number(r.score).toFixed(1);
+                    }},
+                {field: 'pass', title: '是否合格', width: 100, align: 'center',
+                    templet: function (r) {
+                        return r.pass === 1
+                            ? '<span class="layui-badge layui-bg-green">合格</span>'
+                            : '<span class="layui-badge layui-bg-red">不合格</span>';
+                    }},
+                {field: 'examDate', title: '考试日期', width: 110, align: 'center'},
+                {field: 'usedMinutes', title: '用时(分)', width: 90, align: 'center'},
+                {field: 'times', title: '第几次', width: 80, align: 'center'},
+                {field: 'remark', title: '备注', minWidth: 140},
+                {title: '操作', width: 130, fixed: 'right', toolbar: '#scoreRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('examTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        table.on('toolbar(examTable)', function (obj) {
+            if (obj.event === 'add') openExamForm(null);
+        });
+
+        table.on('tool(examTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openExamForm(row);
+            } else if (obj.event === 'scores') {
+                openScores(row);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除考试「' + esc(row.name) + '」吗？其下成绩会一并删除。',
+                    {icon: 3, title: '提示'}, function (i) {
+                        layer.close(i);
+                        $.post('/api/train/exam/delete', {id: row.id}, function (res) {
+                            if (res.code === 0) {
+                                layer.msg('删除成功', {icon: 1});
+                                table.reload('examTable');
+                            } else {
+                                layer.msg(res.msg || '删除失败');
+                            }
+                        });
+                    });
+            }
+        });
+
+        // ---------------------------------------------------------- 考试表单
+
+        function openExamForm(row) {
+            var d = row || {};
+            form.val('examForm', {
+                id: d.id || '',
+                examNo: d.examNo || '',
+                name: d.name || '',
+                courseId: d.courseId || '',
+                examType: d.examType || '线上考试',
+                totalScore: d.totalScore === null || d.totalScore === undefined ? 100 : d.totalScore,
+                passScore: d.passScore === null || d.passScore === undefined ? 60 : d.passScore,
+                duration: d.duration === null || d.duration === undefined ? 60 : d.duration,
+                questionCount: d.questionCount === null || d.questionCount === undefined ? '' : d.questionCount,
+                examDate: d.examDate || '',
+                status: d.status || '未发布',
+                remark: d.remark || ''
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑考试' : '新增考试',
+                area: ['860px', '540px'],
+                content: $('#examFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        form.on('submit(examSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                examNo: f.examNo,
+                name: f.name,
+                courseId: f.courseId ? Number(f.courseId) : null,
+                examType: f.examType,
+                totalScore: f.totalScore === '' ? 100 : Number(f.totalScore),
+                passScore: f.passScore === '' ? 60 : Number(f.passScore),
+                duration: f.duration === '' ? 60 : Number(f.duration),
+                questionCount: f.questionCount === '' ? 0 : Number(f.questionCount),
+                examDate: f.examDate || null,
+                status: f.status,
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/train/exam/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('examTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#examCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+
+        // ---------------------------------------------------------- 成绩
+
+        function openScores(exam) {
+            currentExam = exam;
+            scoreIndex = layer.open({
+                type: 1,
+                title: '成绩明细 — ' + esc(exam.name),
+                area: ['1000px', '560px'],
+                content: $('#scoreWrap'),
+                end: function () { scoreIndex = null; }
+            });
+            reloadScores();
+        }
+
+        function reloadScores() {
+            if (!currentExam) return;
+            $.get('/api/train/score/by-exam', {examId: currentExam.id}, function (res) {
+                table.reload('scoreTable', {data: res.data || []});
+            });
+        }
+
+        table.on('toolbar(scoreTable)', function (obj) {
+            if (obj.event === 'add') openScoreForm(null);
+        });
+
+        table.on('tool(scoreTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openScoreForm(row);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除「' + esc(row.studentName) + '」的成绩吗？', {icon: 3, title: '提示'},
+                    function (i) {
+                        layer.close(i);
+                        $.post('/api/train/score/delete', {id: row.id}, function (res) {
+                            if (res.code === 0) {
+                                layer.msg('删除成功', {icon: 1});
+                                reloadScores();
+                                table.reload('examTable');
+                            } else {
+                                layer.msg(res.msg || '删除失败');
+                            }
+                        });
+                    });
+            }
+        });
+
+        function openScoreForm(row) {
+            var d = row || {};
+            form.val('scoreForm', {
+                id: d.id || '',
+                examId: currentExam ? currentExam.id : (d.examId || ''),
+                studentNo: d.studentNo || '',
+                studentName: d.studentName || '',
+                dept: d.dept || '',
+                score: d.score === null || d.score === undefined ? '' : d.score,
+                examDate: d.examDate || (currentExam ? currentExam.examDate : ''),
+                usedMinutes: d.usedMinutes === null || d.usedMinutes === undefined ? '' : d.usedMinutes,
+                times: d.times || '',
+                remark: d.remark || ''
+            });
+            scoreFormIndex = layer.open({
+                type: 1,
+                title: row ? '编辑成绩' : '录入成绩',
+                area: ['760px', '440px'],
+                content: $('#scoreFormWrap'),
+                end: function () { scoreFormIndex = null; }
+            });
+        }
+
+        form.on('submit(scoreSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                examId: f.examId ? Number(f.examId) : null,
+                studentNo: f.studentNo,
+                studentName: f.studentName,
+                dept: f.dept,
+                score: f.score === '' ? null : Number(f.score),
+                examDate: f.examDate || null,
+                usedMinutes: f.usedMinutes === '' ? 0 : Number(f.usedMinutes),
+                times: f.times === '' ? null : Number(f.times),
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/train/score/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(scoreFormIndex);
+                        reloadScores();
+                        table.reload('examTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#scoreCancel').on('click', function () {
+            if (scoreFormIndex !== null) layer.close(scoreFormIndex);
+        });
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>审计整改总览</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-card-gap { margin-bottom: 12px; }
+
+        .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .kpi-card {
+            flex: 1;
+            min-width: 160px;
+            background: #fff;
+            border-radius: 4px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+        }
+
+        .kpi-label { color: #8a9099; font-size: 13px; }
+
+        .kpi-value {
+            font-size: 26px;
+            font-weight: 600;
+            color: #1f2329;
+            margin-top: 6px;
+            line-height: 1.2;
+        }
+
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+
+        .chart-box { width: 100%; height: 300px; }
+
+        .tip-card {
+            background: #fff;
+            border-radius: 4px;
+            padding: 14px 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+            cursor: pointer;
+            transition: box-shadow .2s;
+        }
+
+        .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+
+        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
+
+        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 6px; }
+
+        .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 审计 KPI -->
+    <div class="kpi-row rich-card-gap">
+        <div class="kpi-card">
+            <div class="kpi-label">审计项目</div>
+            <div class="kpi-value" id="kpiProject">-</div>
+            <div class="kpi-sub">累计开展审计项目</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">审计问题</div>
+            <div class="kpi-value" id="kpiIssue">-</div>
+            <div class="kpi-sub">累计发现并登记问题</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">已销号</div>
+            <div class="kpi-value" id="kpiClosed" style="color:#18a058">-</div>
+            <div class="kpi-sub">整改完成并销号</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">整改率</div>
+            <div class="kpi-value" id="kpiRate">-</div>
+            <div class="kpi-sub">已销号 / 问题总数</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">逾期未整改</div>
+            <div class="kpi-value" id="kpiOverdue" style="color:#e13c3c">-</div>
+            <div class="kpi-sub">已过整改期限仍未销号</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">问题金额</div>
+            <div class="kpi-value" id="kpiAmount">-</div>
+            <div class="kpi-sub">涉及金额合计</div>
+        </div>
+    </div>
+
+    <!-- 检查 KPI -->
+    <div class="kpi-row rich-card-gap">
+        <div class="kpi-card">
+            <div class="kpi-label">检查任务</div>
+            <div class="kpi-value" id="kpiTask">-</div>
+            <div class="kpi-sub">跟踪 / 专项 / 日常 / 核查</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">已开展检查</div>
+            <div class="kpi-value" id="kpiTaskDone">-</div>
+            <div class="kpi-sub">已完成检查次数</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">检查发现问题</div>
+            <div class="kpi-value" id="kpiFinding">-</div>
+            <div class="kpi-sub">检查台账累计</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">未整改</div>
+            <div class="kpi-value" id="kpiFindingOpen" style="color:#e13c3c">-</div>
+            <div class="kpi-sub">检查发现仍未整改</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">问责人次</div>
+            <div class="kpi-value" id="kpiPunish">-</div>
+            <div class="kpi-sub">被审计单位问责</div>
+        </div>
+    </div>
+
+    <!-- 提醒 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipTrace">
+                <div class="tip-title">近期跟踪检查</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipTraceNum">0</span> 项需要跟踪检查</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipKeep">
+                <div class="tip-title">持续整改</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipKeepNum" style="color:#2f7ef7">0</span> 项长期持续整改</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipDue">
+                <div class="tip-title">整改时限临近</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipDueNum" style="color:#ff9f43">0</span> 项 7 天内到期</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipOverdue">
+                <div class="tip-title">已逾期</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipOverdueNum" style="color:#e13c3c">0</span> 项已逾期未整改</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">整改情况分布</div>
+                <div class="layui-card-body">
+                    <div id="typeChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">问题类型分布</div>
+                <div class="layui-card-body">
+                    <div id="natureChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">年度整改趋势</div>
+                <div class="layui-card-body">
+                    <div id="trendChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 审计项目 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            审计项目详细情况
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">点击「问题」查看该项目整改台账</span>
+        </div>
+        <div class="layui-card-body">
+            <table class="layui-hide" id="projectTable" lay-filter="projectTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="projectRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="issues">问题</a>
+</script>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        var typeChart = echarts.init(document.getElementById('typeChart'));
+        var natureChart = echarts.init(document.getElementById('natureChart'));
+        var trendChart = echarts.init(document.getElementById('trendChart'));
+
+        // ---------------------------------------------------------- 项目表
+        table.render({
+            elem: '#projectTable',
+            url: '/api/audit/project/list',
+            method: 'get',
+            where: {archived: 0},
+            page: true,
+            limit: 8,
+            limits: [8, 20, 50],
+            cols: [[
+                {field: 'projectNo', title: '项目编号', width: 120, sort: true},
+                {field: 'name', title: '项目名称', minWidth: 220},
+                {field: 'auditYear', title: '年度', width: 80, align: 'center'},
+                {field: 'auditType', title: '审计类型', width: 130},
+                {field: 'unitName', title: '被审计单位', width: 120},
+                {field: 'auditDate', title: '审计时间', width: 110, align: 'center'},
+                {field: 'issueCount', title: '问题', width: 70, align: 'center'},
+                {field: 'closedCount', title: '已销号', width: 80, align: 'center'},
+                {field: 'overdueCount', title: '逾期', width: 70, align: 'center',
+                    templet: function (r) {
+                        return r.overdueCount > 0
+                            ? '<span style="color:#e13c3c;font-weight:600">' + r.overdueCount + '</span>'
+                            : '0';
+                    }},
+                {field: 'amount', title: '问题金额', width: 120, align: 'right',
+                    templet: function (r) { return money(r.amount); }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已完成' ? 'layui-bg-green'
+                            : (r.status === '整改中' ? 'layui-bg-blue' : '');
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 80, fixed: 'right', toolbar: '#projectRowBar'}
+            ]]
+        });
+
+        table.on('tool(projectTable)', function (obj) {
+            if (obj.event === 'issues') {
+                // 跳到问题整改页并带上项目筛选
+                openTab('/audit/issue?projectId=' + obj.data.id);
+            }
+        });
+
+        // ---------------------------------------------------------- 统计
+        function load() {
+            $.post('/api/audit/refresh-status', function () {
+                $.get('/api/audit/overview', function (res) {
+                    if (res.code !== 0) {
+                        layer.msg(res.msg || '统计加载失败');
+                        return;
+                    }
+                    var kpi = res.data.kpi || {};
+                    var ik = res.data.inspectKpi || {};
+                    $('#kpiProject').text(kpi.projectCount || 0);
+                    $('#kpiIssue').text(kpi.issueCount || 0);
+                    $('#kpiClosed').text(kpi.closedCount || 0);
+                    $('#kpiRate').text((kpi.rectifyRate || 0) + '%');
+                    $('#kpiOverdue').text(kpi.overdueCount || 0);
+                    $('#kpiAmount').text(money(kpi.amount));
+                    $('#kpiPunish').text(kpi.punishCount || 0);
+                    $('#kpiTask').text(ik.taskCount || 0);
+                    $('#kpiTaskDone').text(ik.taskDone || 0);
+                    $('#kpiFinding').text(ik.findingCount || 0);
+                    $('#kpiFindingOpen').text(ik.findingOpen || 0);
+
+                    var r = res.data.reminders || {};
+                    $('#tipTraceNum').text(r.traceInspect || 0);
+                    $('#tipKeepNum').text(r.keepGoing || 0);
+                    $('#tipDueNum').text(r.dueSoon || 0);
+                    $('#tipOverdueNum').text(r.overdue || 0);
+
+                    renderPie(typeChart, '整改情况', res.data.progresses || []);
+                    renderBar(natureChart, res.data.issueTypes || []);
+                    renderTrend(res.data.trend || []);
+                });
+            });
+        }
+
+        function renderPie(chart, name, rows) {
+            chart.setOption({
+                tooltip: {trigger: 'item', formatter: '{b}: {c} 项 ({d}%)'},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                series: [{
+                    type: 'pie',
+                    radius: ['42%', '66%'],
+                    center: ['50%', '45%'],
+                    avoidLabelOverlap: true,
+                    label: {formatter: '{b}\n{c} 项'},
+                    data: rows.map(function (r) {
+                        return {name: r.name, value: Number(r.value || 0)};
+                    })
+                }],
+                color: ['#2f7ef7', '#18a058', '#ff9f43', '#e13c3c', '#8a9099']
+            }, true);
+        }
+
+        function renderBar(chart, rows) {
+            rows = rows.slice(0, 8);
+            chart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                grid: {left: 8, right: 24, top: 16, bottom: 8, containLabel: true},
+                xAxis: {type: 'value', splitLine: {lineStyle: {type: 'dashed'}}},
+                yAxis: {
+                    type: 'category',
+                    data: rows.map(function (r) { return r.name; }).reverse(),
+                    axisLabel: {fontSize: 12}
+                },
+                series: [{
+                    type: 'bar',
+                    barWidth: 14,
+                    itemStyle: {color: '#2f7ef7', borderRadius: [0, 3, 3, 0]},
+                    label: {show: true, position: 'right', fontSize: 11, color: '#8a9099'},
+                    data: rows.map(function (r) { return Number(r.value || 0); }).reverse()
+                }]
+            }, true);
+        }
+
+        function renderTrend(rows) {
+            trendChart.setOption({
+                tooltip: {trigger: 'axis'},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                grid: {left: 8, right: 16, top: 24, bottom: 36, containLabel: true},
+                xAxis: {
+                    type: 'category',
+                    data: rows.map(function (r) { return r.label + '年'; })
+                },
+                yAxis: {type: 'value', splitLine: {lineStyle: {type: 'dashed'}}},
+                series: [
+                    {
+                        name: '问题数', type: 'bar', barWidth: 26,
+                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return Number(r.total || 0); })
+                    },
+                    {
+                        name: '已销号', type: 'line', smooth: true, symbolSize: 7,
+                        itemStyle: {color: '#18a058'},
+                        data: rows.map(function (r) { return Number(r.closed || 0); })
+                    },
+                    {
+                        name: '逾期', type: 'line', smooth: true, symbolSize: 7,
+                        itemStyle: {color: '#e13c3c'},
+                        data: rows.map(function (r) { return Number(r.overdue || 0); })
+                    }
+                ]
+            }, true);
+        }
+
+        /** 金额：超过 1 万折算为万元，便于阅读。 */
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            if (isNaN(n)) return '-';
+            if (Math.abs(n) >= 10000) {
+                return (n / 10000).toFixed(2) + ' 万';
+            }
+            return n.toFixed(2);
+        }
+
+        $('#tipTrace').on('click', function () { go('/audit/inspect'); });
+        $('#tipKeep').on('click', function () { go('/audit/issue?progress=' + encodeURIComponent('持续整改')); });
+        $('#tipDue').on('click', function () { go('/audit/issue'); });
+        $('#tipOverdue').on('click', function () { go('/audit/issue?status=逾期'); });
+
+        /**
+         * 在 layuiAdmin 主框架里打开新标签页（iframe 模式下页面没有自己的地址栏）。
+         * 取不到父窗口 API 时退化为直接跳转。
+         */
+        function openTab(href) {
+            try {
+                var admin = parent.layui && parent.layui.admin;
+                if (admin && admin.events && admin.events.openTab) {
+                    admin.events.openTab({href: href});
+                    return;
+                }
+                if (admin && admin.openTab) {
+                    admin.openTab({href: href});
+                    return;
+                }
+            } catch (e) {
+                // 忽略跨域 / 非框架环境，走直接跳转
+            }
+            location.href = href;
+        }
+
+        function go(href) {
+            openTab(href);
+        }
+
+        window.addEventListener('resize', function () {
+            typeChart.resize();
+            natureChart.resize();
+            trendChart.resize();
+        });
+
+        load();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>销售数据可视化大屏</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+        }
+
+        .rich-title h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2f3542;
+            margin: 0;
+        }
+
+        .rich-title .rich-time {
+            font-size: 13px;
+            color: #99a1ae;
+        }
+
+        .rich-kpi {
+            position: relative;
+            overflow: hidden;
+            padding: 18px 20px;
+            border-radius: 4px;
+            color: #fff;
+        }
+
+        .rich-kpi .rich-kpi-title {
+            font-size: 14px;
+            opacity: .9;
+        }
+
+        .rich-kpi .rich-kpi-value {
+            margin-top: 8px;
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .rich-kpi .rich-kpi-unit {
+            margin-left: 4px;
+            font-size: 13px;
+            font-weight: 400;
+            opacity: .85;
+        }
+
+        .rich-kpi .rich-kpi-foot {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: .9;
+        }
+
+        .rich-kpi .rich-kpi-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 54px;
+            opacity: .18;
+        }
+
+        .rich-chart {
+            width: 100%;
+            height: 320px;
+        }
+
+        .rich-row-gap {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 标题条 -->
+    <div class="rich-title">
+        <h2>金宝矿业销售数据大屏<span style="font-size:12px;color:#99a1ae;font-weight:400;margin-left:8px">
+            图表总览；明细数据请到「销售统计报表」</span></h2>
+        <div style="display:flex;align-items:center;gap:12px">
+            <span class="rich-time">数据更新：<span id="updateTime">--</span></span>
+            <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnReport">
+                <i class="layui-icon layui-icon-form"></i> 销售统计报表
+            </button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnLedger">
+                <i class="layui-icon layui-icon-table"></i> 发货台账
+            </button>
+        </div>
+    </div>
+
+    <!-- 核心指标 -->
+    <div class="layui-row layui-col-space15 rich-row-gap">
+        <div class="layui-col-md3">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#16baaa,#0f9c8e);">
+                <i class="layui-icon layui-icon-diamond rich-kpi-icon"></i>
+                <div class="rich-kpi-title">金含量总计</div>
+                <div class="rich-kpi-value"><span id="kpiTotalGold">0</span><span class="rich-kpi-unit">g</span></div>
+                <div class="rich-kpi-foot">返金量 <span id="kpiReturnGold">0</span> g</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#1E9FFF,#0f7fd6);">
+                <i class="layui-icon layui-icon-form rich-kpi-icon"></i>
+                <div class="rich-kpi-title">精矿干重</div>
+                <div class="rich-kpi-value"><span id="kpiDryWeight">0</span><span class="rich-kpi-unit">t</span></div>
+                <div class="rich-kpi-foot">平均品位 <span id="kpiAvgGrade">0</span> g/t</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#F78400,#d97100);">
+                <i class="layui-icon layui-icon-rmb rich-kpi-icon"></i>
+                <div class="rich-kpi-title">已结算</div>
+                <div class="rich-kpi-value"><span id="kpiSettledGold">0</span><span class="rich-kpi-unit">g</span></div>
+                <div class="rich-kpi-foot">结算金额 <span id="kpiSettleAmount">0</span> 万元</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#AA3130,#8a2726);">
+                <i class="layui-icon layui-icon-notice rich-kpi-icon"></i>
+                <div class="rich-kpi-title">欠金量</div>
+                <div class="rich-kpi-value"><span id="kpiOweGold">0</span><span class="rich-kpi-unit">g</span></div>
+                <div class="rich-kpi-foot">库存 <span id="kpiStockGold">0</span> g</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 趋势 + 品种占比 -->
+    <div class="layui-row layui-col-space15 rich-row-gap">
+        <div class="layui-col-md8">
+            <div class="layui-card">
+                <div class="layui-card-header">月度发货趋势（金含量与批次数量）</div>
+                <div class="layui-card-body">
+                    <div id="chartTrend" class="rich-chart"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">发货品种金含量占比（g）</div>
+                <div class="layui-card-body">
+                    <div id="chartCategory" class="rich-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 客户 + 最近发货 -->
+    <div class="layui-row layui-col-space15 rich-row-gap">
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">客户金含量分布（g）</div>
+                <div class="layui-card-body">
+                    <div id="chartBuyer" class="rich-chart"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md8">
+            <div class="layui-card">
+                <div class="layui-card-header">最近发货批次</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="tableRecent" lay-filter="tableRecent"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer'], function () {
+        var $ = layui.$;
+        var layer = layui.layer;
+        var table = layui.table;
+
+        /** 统一取值：后端返回 {code,msg,data}。 */
+        function load(url, cb) {
+            $.get(url, function (res) {
+                if (res && res.code === 0) {
+                    cb(res.data);
+                }
+            });
+        }
+
+        /** 千分位数字。 */
+        function num(v, digits) {
+            var n = Number(v || 0);
+            if (isNaN(n)) n = 0;
+            return n.toLocaleString('zh-CN', {
+                minimumFractionDigits: digits === undefined ? 2 : digits,
+                maximumFractionDigits: digits === undefined ? 2 : digits
+            });
+        }
+
+        function setNum(id, v, digits) {
+            $(id).text(num(v, digits));
+        }
+
+        /** 在框架内打开页面（不在框架内则新窗口打开）。 */
+        function openPage(url, title) {
+            try {
+                if (parent && parent.layui && parent.layui.admin) {
+                    parent.layui.admin.openTabsPage({url: url, title: title});
+                    return;
+                }
+            } catch (e) {
+                // 忽略，走兜底
+            }
+            window.open(url, '_blank');
+        }
+
+        $('#btnReport').on('click', function () {
+            openPage('/sale/report', '销售统计报表');
+        });
+        $('#btnLedger').on('click', function () {
+            openPage('/sale/ledger', '发货台账');
+        });
+
+        // ------------------------------------------------------ 核心指标
+        load('/api/dashboard/summary', function (d) {
+            setNum('#kpiTotalGold', d.totalGold, 2);
+            setNum('#kpiReturnGold', d.returnGold, 2);
+            setNum('#kpiDryWeight', d.dryWeight, 3);
+            setNum('#kpiAvgGrade', d.avgGrade, 2);
+            setNum('#kpiSettledGold', d.settledGold, 2);
+            setNum('#kpiSettleAmount', Number(d.settlementAmount || 0) / 10000, 2);
+            setNum('#kpiOweGold', d.oweGold, 2);
+            setNum('#kpiStockGold', d.stockGold, 2);
+            $('#updateTime').text(new Date().toLocaleString('zh-CN'));
+        });
+
+        // ------------------------------------------------------ 图表容器
+        var charts = [];
+
+        function init(id) {
+            var c = echarts.init(document.getElementById(id));
+            charts.push(c);
+            return c;
+        }
+
+        window.addEventListener('resize', function () {
+            for (var i = 0; i < charts.length; i++) {
+                charts[i].resize();
+            }
+        });
+
+        // 月度趋势：柱=金含量，折线=批次数量
+        var trend = init('chartTrend');
+        load('/api/dashboard/trend', function (list) {
+            var months = [], gold = [], batches = [];
+            for (var i = 0; i < (list || []).length; i++) {
+                months.push(list[i].month);
+                gold.push(Number(list[i].amount || 0));
+                batches.push(list[i].orderCount || 0);
+            }
+            trend.setOption({
+                tooltip: {trigger: 'axis'},
+                legend: {data: ['金含量(g)', '批次数量']},
+                grid: {left: 60, right: 60, top: 40, bottom: 40},
+                xAxis: {type: 'category', data: months},
+                yAxis: [
+                    {type: 'value', name: '金含量(g)'},
+                    {type: 'value', name: '批次'}
+                ],
+                series: [
+                    {
+                        name: '金含量(g)', type: 'bar', data: gold,
+                        itemStyle: {color: '#1E9FFF'}
+                    },
+                    {
+                        name: '批次数量', type: 'line', yAxisIndex: 1, data: batches,
+                        smooth: true, itemStyle: {color: '#F78400'}
+                    }
+                ]
+            });
+        });
+
+        // 品种占比
+        var category = init('chartCategory');
+        load('/api/dashboard/category', function (list) {
+            category.setOption({
+                tooltip: {trigger: 'item', formatter: '{b}: {c} g ({d}%)'},
+                legend: {bottom: 0},
+                series: [{
+                    type: 'pie', radius: ['42%', '68%'], center: ['50%', '45%'],
+                    label: {formatter: '{b}\n{c} g'},
+                    data: (list || []).map(function (r) {
+                        return {name: r.name, value: Number(r.value || 0)};
+                    })
+                }]
+            });
+        });
+
+        // 客户分布
+        var buyer = init('chartBuyer');
+        load('/api/dashboard/buyer', function (list) {
+            buyer.setOption({
+                tooltip: {trigger: 'axis'},
+                grid: {left: 70, right: 30, top: 30, bottom: 30},
+                xAxis: {type: 'value', name: 'g'},
+                yAxis: {
+                    type: 'category',
+                    data: (list || []).map(function (r) { return r.name; })
+                },
+                series: [{
+                    type: 'bar',
+                    data: (list || []).map(function (r) { return Number(r.value || 0); }),
+                    itemStyle: {color: '#16baaa'},
+                    label: {show: true, position: 'right'}
+                }]
+            });
+        });
+
+        // ------------------------------------------------------ 最近发货
+        table.render({
+            elem: '#tableRecent',
+            url: '/api/dashboard/recent?limit=12',
+            method: 'get',
+            page: false,
+            cols: [[
+                {field: 'shipNo', title: '批次号', width: 130},
+                {
+                    field: 'productType', title: '品种', width: 110,
+                    templet: function (r) {
+                        return r.productType === 'CONCENTRATE'
+                            ? '<span class="layui-badge layui-bg-blue">浮选精矿</span>'
+                            : '<span class="layui-badge layui-bg-orange">合质金</span>';
+                    }
+                },
+                {field: 'customerName', title: '客户', width: 190},
+                {field: 'shipDate', title: '发货日期', width: 110},
+                {
+                    field: 'dryWeight', title: '干重(t)', width: 100,
+                    templet: function (r) { return num(r.dryWeight, 3); }
+                },
+                {
+                    field: 'goldContent', title: '金含量(g)', width: 110,
+                    templet: function (r) { return num(r.goldContent, 2); }
+                },
+                {
+                    field: 'returnGold', title: '返金量(g)', width: 110,
+                    templet: function (r) { return num(r.returnGold, 2); }
+                },
+                {field: 'remark', title: '备注', minWidth: 120}
+            ]],
+            parseData: function (res) {
+                return {code: res.code, msg: res.msg, count: (res.data || []).length, data: res.data || []};
+            }
+        });
+    });
+</script>
+</body>
+</html>

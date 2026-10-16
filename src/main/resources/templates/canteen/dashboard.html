@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>食堂经营总览</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-gap { margin-bottom: 12px; }
+        .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .kpi-card {
+            flex: 1; min-width: 158px; background: #fff; border-radius: 4px; padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+        }
+        .kpi-label { color: #8a9099; font-size: 13px; }
+        .kpi-value { font-size: 23px; font-weight: 600; color: #1f2329; margin-top: 6px; line-height: 1.2; }
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .chart-box { width: 100%; height: 288px; }
+        .tip-card {
+            background: #fff; border-radius: 4px; padding: 13px 16px; cursor: pointer; height: 100%;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: box-shadow .2s;
+        }
+        .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
+        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 5px; }
+        .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 当期 KPI -->
+    <div class="kpi-row rich-gap">
+        <div class="kpi-card">
+            <div class="kpi-label" id="periodLabel">当期就餐人次</div>
+            <div class="kpi-value" id="kpiPeople">-</div>
+            <div class="kpi-sub">人均食材成本 <span id="kpiPeopleCost">-</span> 元</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">就餐收入</div>
+            <div class="kpi-value" id="kpiIncome" style="color:#2f7ef7">-</div>
+            <div class="kpi-sub">其中公司餐补 <span id="kpiSubsidy">-</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">食材成本</div>
+            <div class="kpi-value" id="kpiCost" style="color:#ff9f43">-</div>
+            <div class="kpi-sub">出库单 <span id="kpiOutCnt">0</span> 张</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">运行费用</div>
+            <div class="kpi-value" id="kpiFee" style="color:#7c5cff">-</div>
+            <div class="kpi-sub">费用单 <span id="kpiFeeCnt">0</span> 张</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">当期结余</div>
+            <div class="kpi-value" id="kpiProfit">-</div>
+            <div class="kpi-sub">结余率 <span id="kpiProfitRate">-</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">库存结存</div>
+            <div class="kpi-value" id="kpiStock">-</div>
+            <div class="kpi-sub"><span id="kpiStockCnt">0</span> 种物料在库</div>
+        </div>
+    </div>
+
+    <!-- 提醒 -->
+    <div class="layui-row layui-col-space12 rich-gap">
+        <div class="layui-col-md2">
+            <div class="tip-card" id="tipLow">
+                <div class="tip-title">库存不足</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipLowNum" style="color:#e13c3c">0</span> 种低于安全库存</div>
+            </div>
+        </div>
+        <div class="layui-col-md2">
+            <div class="tip-card" id="tipOver">
+                <div class="tip-title">库存超储</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipOverNum" style="color:#ff9f43">0</span> 种超出上限</div>
+            </div>
+        </div>
+        <div class="layui-col-md2">
+            <div class="tip-card" id="tipNegative">
+                <div class="tip-title">负库存</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipNegativeNum" style="color:#e13c3c">0</span> 种结存为负</div>
+            </div>
+        </div>
+        <div class="layui-col-md2">
+            <div class="tip-card" id="tipUnpaid">
+                <div class="tip-title">应付采购款</div>
+                <div class="tip-desc"><span class="tip-num" id="tipUnpaidNum" style="color:#7c5cff">0</span> 张单据未付清</div>
+            </div>
+        </div>
+        <div class="layui-col-md2">
+            <div class="tip-card" id="tipDraft">
+                <div class="tip-title">待处理单据</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipDraftNum" style="color:#8a9099">0</span> 张草稿未完成</div>
+            </div>
+        </div>
+        <div class="layui-col-md2">
+            <div class="tip-card" id="tipBalance">
+                <div class="tip-title">账面余额</div>
+                <div class="tip-desc"><span class="tip-num" id="tipBalanceNum" style="color:#18a058">0</span> 元</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="layui-row layui-col-space12 rich-gap">
+        <div class="layui-col-md8">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    月度收支趋势
+                    <span class="layui-word-aux" style="margin-left:8px;font-size:12px">收入 = 就餐收入；食材成本在领用出库时结转</span>
+                </div>
+                <div class="layui-card-body"><div id="trendChart" class="chart-box"></div></div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">餐次收入构成</div>
+                <div class="layui-card-body"><div id="mealChart" class="chart-box"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space12 rich-gap">
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">库存金额分类分布</div>
+                <div class="layui-card-body"><div id="stockChart" class="chart-box"></div></div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">费用支出构成</div>
+                <div class="layui-card-body"><div id="feeChart" class="chart-box"></div></div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">供应商采购额 TOP8（万元）</div>
+                <div class="layui-card-body"><div id="supplierChart" class="chart-box"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 近期单据 -->
+    <div class="layui-tab layui-tab-card rich-gap" lay-filter="recentTab">
+        <ul class="layui-tab-title">
+            <li class="layui-this">近期采购入库</li>
+            <li>近期领用出库</li>
+            <li>近期就餐收入</li>
+            <li>近期收支流水</li>
+        </ul>
+        <div class="layui-tab-content" style="padding:10px">
+            <div class="layui-tab-item layui-show"><table class="layui-hide" id="purchaseTable"></table></div>
+            <div class="layui-tab-item"><table class="layui-hide" id="outboundTable"></table></div>
+            <div class="layui-tab-item"><table class="layui-hide" id="saleTable"></table></div>
+            <div class="layui-tab-item"><table class="layui-hide" id="accountTable"></table></div>
+        </div>
+    </div>
+
+    <!-- 付款提醒 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            应付账款
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">采购入库单未付清部分</span>
+        </div>
+        <div class="layui-card-body"><table class="layui-hide" id="unpaidTable"></table></div>
+    </div>
+
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery', 'element'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        var element = layui.element;
+
+        /** 分页签内表格的固定高度：高度恒定，页面不会因为数据来回变化而抖动。 */
+        var TAB_H = 360;
+
+        /** 各分页签是否已初始化；隐藏容器里的表格宽度会算成 0，故按需渲染。 */
+        var inited = {purchase: false, outbound: false, sale: false, account: false};
+
+        var trendChart = echarts.init(document.getElementById('trendChart'));
+        var mealChart = echarts.init(document.getElementById('mealChart'));
+        var stockChart = echarts.init(document.getElementById('stockChart'));
+        var feeChart = echarts.init(document.getElementById('feeChart'));
+        var supplierChart = echarts.init(document.getElementById('supplierChart'));
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            if (isNaN(n)) return v;
+            return n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function wan(v) {
+            return (Number(v || 0) / 10000).toFixed(2);
+        }
+
+        function renderPurchaseTable() {
+            if (inited.purchase) { return; }
+            inited.purchase = true;
+            table.render({
+            elem: '#purchaseTable', url: '/api/canteen/purchase/list', method: 'get',
+            page: true, limit: 8, limits: [8, 20], height: TAB_H,
+            cols: [[
+                {field: 'purchaseNo', title: '入库单号', width: 130},
+                {field: 'supplierName', title: '供应商', minWidth: 160},
+                {field: 'purchaseDate', title: '入库日期', width: 110, align: 'center'},
+                {field: 'totalWithTax', title: '价税合计(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.totalWithTax); }},
+                {field: 'payStatus', title: '付款', width: 100, align: 'center',
+                    templet: function (r) {
+                        var c = r.payStatus === '已付款' ? 'layui-bg-green' : 'layui-bg-orange';
+                        return '<span class="layui-badge ' + c + '">' + (r.payStatus || '-') + '</span>';
+                    }},
+                {field: 'status', title: '状态', width: 100, align: 'center',
+                    templet: function (r) {
+                        return '<span class="layui-badge ' + (r.status === '草稿' ? '' : 'layui-bg-blue')
+                                + '">' + (r.status || '-') + '</span>';
+                    }}
+            ]]
+            });
+        }
+
+        function renderOutboundTable() {
+            if (inited.outbound) { return; }
+            inited.outbound = true;
+            table.render({
+            elem: '#outboundTable', url: '/api/canteen/outbound/list', method: 'get',
+            page: true, limit: 8, limits: [8, 20], height: TAB_H,
+            cols: [[
+                {field: 'outNo', title: '出库单号', width: 130},
+                {field: 'outType', title: '出库类型', width: 100, align: 'center'},
+                {field: 'windowName', title: '领用窗口', width: 110},
+                {field: 'deptName', title: '部门', width: 110},
+                {field: 'outDate', title: '出库日期', width: 110, align: 'center'},
+                {field: 'peopleCount', title: '人次', width: 80, align: 'center'},
+                {field: 'totalAmount', title: '出库金额(元)', minWidth: 130, align: 'right',
+                    templet: function (r) { return money(r.totalAmount); }},
+                {field: 'status', title: '状态', width: 100, align: 'center'}
+            ]]
+            });
+        }
+
+        function renderSaleTable() {
+            if (inited.sale) { return; }
+            inited.sale = true;
+            table.render({
+            elem: '#saleTable', url: '/api/canteen/sale/list', method: 'get',
+            page: true, limit: 8, limits: [8, 20], height: TAB_H,
+            cols: [[
+                {field: 'saleNo', title: '单据编号', width: 130},
+                {field: 'bizDate', title: '营业日期', width: 110, align: 'center'},
+                {field: 'mealType', title: '餐次', width: 80, align: 'center'},
+                {field: 'customerType', title: '就餐类型', width: 100, align: 'center'},
+                {field: 'peopleCount', title: '人次', width: 80, align: 'center'},
+                {field: 'actualAmount', title: '实收(元)', width: 110, align: 'right',
+                    templet: function (r) { return money(r.actualAmount); }},
+                {field: 'subsidyAmount', title: '餐补(元)', width: 110, align: 'right',
+                    templet: function (r) { return money(r.subsidyAmount); }},
+                {field: 'receivable', title: '应收(元)', minWidth: 120, align: 'right',
+                    templet: function (r) {
+                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.receivable) + '</span>';
+                    }},
+                {field: 'status', title: '状态', width: 100, align: 'center'}
+            ]]
+            });
+        }
+
+        function renderAccountTable() {
+            if (inited.account) { return; }
+            inited.account = true;
+            table.render({
+            elem: '#accountTable', url: '/api/canteen/account/list', method: 'get',
+            page: true, limit: 8, limits: [8, 20], height: TAB_H,
+            cols: [[
+                {field: 'bizDate', title: '业务日期', width: 110, align: 'center'},
+                {field: 'voucherNo', title: '记账流水号', width: 130},
+                {field: 'direction', title: '方向', width: 80, align: 'center',
+                    templet: function (r) {
+                        return r.direction === '收入'
+                                ? '<span class="layui-badge layui-bg-green">收入</span>'
+                                : '<span class="layui-badge layui-bg-red">支出</span>';
+                    }},
+                {field: 'accountType', title: '科目', width: 110},
+                {field: 'summary', title: '摘要', minWidth: 200},
+                {field: 'amount', title: '金额(元)', width: 120, align: 'right',
+                    templet: function (r) {
+                        var c = r.direction === '收入' ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + '">' + money(r.amount) + '</span>';
+                    }},
+                {field: 'balance', title: '余额(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.balance); }},
+                {field: 'handler', title: '记账人', width: 90}
+            ]]
+            });
+        }
+
+        // 首屏只渲染当前可见的页签，其余等切过去再初始化（见文件末尾 tab 监听）
+        renderPurchaseTable();
+
+        var unpaidIns = table.render({
+            elem: '#unpaidTable', data: [], page: false,
+            cols: [[
+                {field: 'purchase_no', title: '入库单号', width: 130},
+                {field: 'supplier_name', title: '供应商', minWidth: 180},
+                {field: 'purchase_date', title: '入库日期', width: 120, align: 'center'},
+                {field: 'amount', title: '未付金额(元)', width: 150, align: 'right',
+                    templet: function (r) {
+                        return '<span style="color:#e13c3c;font-weight:600">' + money(r.amount) + '</span>';
+                    }}
+            ]]
+        });
+
+        $.get('/api/canteen/overview', function (res) {
+            if (res.code !== 0) {
+                layer.msg(res.msg || '统计加载失败');
+                return;
+            }
+            var d = res.data || {};
+            var k = d.kpi || {};
+            $('#periodLabel').text((k.period || '') + '就餐人次');
+            $('#kpiPeople').text(k.peopleCount || 0);
+            $('#kpiPeopleCost').text(money(k.peopleCost));
+            $('#kpiIncome').text(money(k.saleIncome));
+            $('#kpiSubsidy').text(money(k.subsidyAmount));
+            $('#kpiCost').text(money(k.materialCost));
+            $('#kpiOutCnt').text(k.outCount || 0);
+            $('#kpiFee').text(money(k.feeAmount));
+            $('#kpiFeeCnt').text(k.feeCount || 0);
+            $('#kpiProfit').text(money(k.profit));
+            $('#kpiProfitRate').text((k.profitRate || 0) + '%');
+            $('#kpiStock').text(money(k.stockAmount));
+            $('#kpiStockCnt').text(k.stockCount || 0);
+            $('#kpiProfit').css('color', Number(k.profit || 0) >= 0 ? '#18a058' : '#e13c3c');
+
+            var w = d.warn || {};
+            $('#tipLowNum').text(w.lowStock || 0);
+            $('#tipOverNum').text(w.overStock || 0);
+            $('#tipNegativeNum').text(w.negativeStock || 0);
+            $('#tipDraftNum').text(w.draftBill || 0);
+            $('#tipBalanceNum').text(money(k.accountBalance));
+            var unpaid = w.unpaidPurchase || [];
+            $('#tipUnpaidNum').text(unpaid.length);
+            $('#tipBalanceNum').css('color', Number(k.accountBalance || 0) >= 0 ? '#18a058' : '#e13c3c');
+            unpaidIns.reload({data: unpaid});
+
+            // 月度趋势
+            var trend = (d.trend || []).slice().reverse();
+            trendChart.setOption({
+                tooltip: {trigger: 'axis'},
+                legend: {data: ['就餐收入', '食材成本', '运行费用'], bottom: 0},
+                grid: {left: 48, right: 20, top: 20, bottom: 46},
+                xAxis: {type: 'category', data: trend.map(function (r) { return r.ym; })},
+                yAxis: {type: 'value', name: '万元', axisLabel: {formatter: '{value}'}},
+                series: [
+                    {
+                        name: '就餐收入', type: 'bar', itemStyle: {color: '#2f7ef7'}, barMaxWidth: 28,
+                        data: trend.map(function (r) { return Number(Number(r.income / 10000).toFixed(2)); })
+                    },
+                    {
+                        name: '食材成本', type: 'bar', itemStyle: {color: '#ff9f43'}, barMaxWidth: 28,
+                        data: trend.map(function (r) { return Number(Number(r.cost / 10000).toFixed(2)); })
+                    },
+                    {
+                        name: '运行费用', type: 'line', smooth: true, itemStyle: {color: '#7c5cff'},
+                        data: trend.map(function (r) { return Number(Number(r.fee / 10000).toFixed(2)); })
+                    }
+                ]
+            });
+
+            function pie(chart, rows, title) {
+                chart.setOption({
+                    tooltip: {trigger: 'item', formatter: '{b}: {c} 元 ({d}%)'},
+                    legend: {type: 'scroll', bottom: 0},
+                    series: [{
+                        type: 'pie', radius: ['38%', '62%'], center: ['50%', '44%'], name: title,
+                        label: {formatter: '{b}\n{d}%'},
+                        data: (rows || []).map(function (r) {
+                            return {name: r.name, value: Number(Number(r.value).toFixed(2))};
+                        })
+                    }]
+                });
+            }
+
+            pie(mealChart, d.mealDist, '餐次收入');
+            pie(stockChart, d.stockDist, '库存金额');
+            pie(feeChart, d.feeDist, '费用构成');
+
+            var suppliers = (d.supplierTop || []).slice().reverse();
+            supplierChart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                grid: {left: 100, right: 30, top: 14, bottom: 24},
+                xAxis: {type: 'value', name: '万元'},
+                yAxis: {type: 'category', data: suppliers.map(function (r) { return r.name; })},
+                series: [{
+                    type: 'bar', barMaxWidth: 16, itemStyle: {color: '#18a058'},
+                    data: suppliers.map(function (r) { return Number(Number(r.value / 10000).toFixed(2)); })
+                }]
+            });
+        });
+
+        window.addEventListener('resize', function () {
+            trendChart.resize(); mealChart.resize(); stockChart.resize();
+            feeChart.resize(); supplierChart.resize();
+        });
+
+        // 切到哪个页签才初始化哪个表格，初始化后 resize 校正列宽
+        element.on('tab(recentTab)', function (data) {
+            if (data.index === 1) { renderOutboundTable(); }
+            else if (data.index === 2) { renderSaleTable(); }
+            else if (data.index === 3) { renderAccountTable(); }
+            setTimeout(function () {
+                ['purchaseTable', 'outboundTable', 'saleTable', 'accountTable'].forEach(function (id) {
+                    if ($('#' + id).next('.layui-table-view').length) { table.resize(id); }
+                });
+            }, 60);
+        });
+    });
+</script>
+</body>
+</html>

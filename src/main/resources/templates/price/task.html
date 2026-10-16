@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>采集任务</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+        .rich-tip { color: #8a9099; font-size: 12px; line-height: 1.8; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-header">手动采集</div>
+        <div class="layui-card-body">
+            <div class="layui-form" style="display:inline-block;margin-right:12px">
+                <input type="text" id="crawlDate" placeholder="目标日期（留空为今天）" autocomplete="off"
+                       class="layui-input" style="width:170px;display:inline-block" readonly>
+            </div>
+            <button class="layui-btn" data-source="SHFE">
+                <i class="layui-icon layui-icon-chart-screen"></i>上期所 SHFE
+            </button>
+            <button class="layui-btn layui-btn-warm" data-source="SGE">
+                <i class="layui-icon layui-icon-chart-screen"></i>上金所 SGE
+            </button>
+            <button class="layui-btn layui-btn-normal" data-source="SMM">
+                <i class="layui-icon layui-icon-chart-screen"></i>上海有色 SMM
+            </button>
+            <button class="layui-btn layui-btn-normal" data-source="CJ">
+                <i class="layui-icon layui-icon-chart-screen"></i>长江有色 CJ
+            </button>
+            <button class="layui-btn layui-btn-danger" id="runAllBtn">
+                <i class="layui-icon layui-icon-refresh-3"></i>采集全部
+            </button>
+            <div class="rich-tip" style="margin-top:8px">
+                <b>自动采集节奏（四个数据源统一）：</b>
+                <br>① <b>日间</b>：工作日 8:00 ~ 18:00，每半小时采一次<b>当天最新价</b>
+                （交易所取延时行情，现货取当日最新报价），非交易日自动跳过。
+                <br>② <b>夜间</b>：上一工作日 18:00 ~ 当天 8:00 期间，服务器开机即补采一次
+                <b>上一工作日终值</b>（交易所=正式收盘价/结算价，现货=当日结算价）；
+                每个数据源在窗口内只成功采一次，数据还没发布时每 30 分钟重试、最多 6 次。
+                <br>③ <b>历史回补</b>：上期所 / 上金所每天 16:40 补一次
+                <b>当日 + 历史</b>（默认回溯 30 个自然日，见
+                <code>rich.crawler.shfe-backfill-days</code> / <code>sge-backfill-days</code>）。
+                <br><b>手动采集口径：</b>
+                <br>① <b>上海有色 / 长江有色</b>：只采<b>目标日那一天</b>，历史行不入库。
+                这两个站点只对"最新交易日"返回未经加密变更的真值，目标日不是最新交易日时整批跳过
+                （日志显示"跳过"，属正常现象）；
+                <br>② <b>上期所 / 上金所</b>：以目标日期为锚点，<b>当日 + 历史</b>一起采；
+                不传日期时默认取今天。
+                <br>③ SMM / CJ 需先点「发现品种」抓取站点品种清单；非交易日站点返回空表属正常现象。
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-header">品种字典</div>
+        <div class="layui-card-body">
+            <form class="layui-form" id="productSearch">
+                <div class="layui-form-item" style="display:inline-block;width:150px;margin-bottom:0">
+                    <select name="source">
+                        <option value="">全部数据源</option>
+                        <option value="SHFE">上期所</option>
+                        <option value="SGE">上金所</option>
+                        <option value="SMM">上海有色</option>
+                        <option value="CJ">长江有色</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:200px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="品种名称 / ID" autocomplete="off"
+                           class="layui-input">
+                </div>
+                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="productSearchBtn">搜索</button>
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary"
+                        data-discover="SMM">发现 SMM 品种
+                </button>
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary"
+                        data-discover="CJ">发现 CJ 品种
+                </button>
+                <span style="float:right;color:#8a9099;font-size:12px;line-height:38px">
+                    关闭开关后，该品种不再纳入定时采集
+                </span>
+            </form>
+            <table class="layui-hide" id="productTable" lay-filter="productTable"></table>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-header">采集日志</div>
+        <div class="layui-card-body">
+            <table class="layui-hide" id="logTable" lay-filter="logTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'laydate', 'jquery', 'layer'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var laydate = layui.laydate;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        laydate.render({elem: '#crawlDate', type: 'date'});
+
+        var SOURCE_NAME = {SHFE: '上期所', SGE: '上金所', SMM: '上海有色', CJ: '长江有色'};
+
+        /** 统一的采集反馈：成功提示条数，失败红色提示。 */
+        function feedback(res, title) {
+            if (!res) return;
+            if (res.code === 0) {
+                var d = res.data || {};
+                var summary = d.message || ('成功 ' + (d.recordCount || 0) + ' 条 / 请求 '
+                    + (d.requestCount || 0) + ' 个');
+                layer.msg(title + '：' + summary, {icon: 1, time: 3000});
+            } else {
+                layer.alert(res.msg || '采集失败', {icon: 2, title: title + '失败'});
+            }
+        }
+
+        /** 点击数据源按钮触发采集。 */
+        $('[data-source]').on('click', function () {
+            var source = $(this).data('source');
+            var name = SOURCE_NAME[source] || source;
+            var loadIndex = layer.load(2, {shade: 0.3});
+            $.ajax({
+                url: '/api/crawl/run',
+                type: 'POST',
+                data: {source: source, date: $('#crawlDate').val()},
+                dataType: 'json',
+                complete: function () { layer.close(loadIndex); },
+                success: function (res) {
+                    feedback(res, name);
+                    reloadAll();
+                },
+                error: function () { layer.alert('请求失败，请查看服务端日志', {icon: 2}); }
+            });
+        });
+
+        /** 采集全部数据源。 */
+        $('#runAllBtn').on('click', function () {
+            var loadIndex = layer.load(2, {shade: 0.3, time: 0});
+            $.ajax({
+                url: '/api/crawl/runAll',
+                type: 'POST',
+                data: {date: $('#crawlDate').val()},
+                dataType: 'json',
+                complete: function () { layer.close(loadIndex); },
+                success: function (res) {
+                    if (res.code !== 0) {
+                        layer.alert(res.msg || '采集失败', {icon: 2});
+                        return;
+                    }
+                    var list = res.data || [];
+                    var lines = [];
+                    for (var i = 0; i < list.length; i++) {
+                        var d = list[i];
+                        lines.push((SOURCE_NAME[d.source] || d.source) + '：'
+                            + (d.message || ('成功 ' + (d.recordCount || 0) + ' 条')));
+                    }
+                    layer.alert(lines.join('<br>'), {icon: 1, title: '采集完成', area: '420px'});
+                    reloadAll();
+                },
+                error: function () { layer.alert('请求失败，请查看服务端日志', {icon: 2}); }
+            });
+        });
+
+        /** 发现某个站点的品种清单。 */
+        $('[data-discover]').on('click', function () {
+            var source = $(this).data('discover');
+            var loadIndex = layer.load(2, {shade: 0.3});
+            $.ajax({
+                url: '/api/crawl/discover',
+                type: 'POST',
+                data: {source: source},
+                dataType: 'json',
+                complete: function () { layer.close(loadIndex); },
+                success: function (res) {
+                    feedback(res, (SOURCE_NAME[source] || source) + ' 品种发现');
+                    reloadProducts();
+                },
+                error: function () { layer.alert('请求失败，请查看服务端日志', {icon: 2}); }
+            });
+        });
+
+        // ---------------------------------------------------------------- 品种字典
+        table.render({
+            elem: '#productTable',
+            url: '/api/price/product/list',
+            method: 'get',
+            page: true,
+            limit: 20,
+            limits: [20, 50, 100],
+            cols: [[
+                {field: 'source', title: '数据源', width: 110, templet: function (r) {
+                    return '<span class="layui-badge layui-bg-gray">'
+                        + (SOURCE_NAME[r.source] || r.source) + '</span>';
+                }},
+                {field: 'productId', title: '品种ID', width: 170},
+                {field: 'productName', title: '品种名称', minWidth: 200},
+                {field: 'productGroup', title: '分组', width: 120},
+                {field: 'unit', title: '单位', width: 90},
+                {field: 'enabled', title: '启用', width: 90, templet: function (r) {
+                    return '<input type="checkbox" name="enabled" lay-skin="switch" '
+                        + 'lay-text="ON|OFF" value="' + r.id + '" '
+                        + (r.enabled === 1 ? 'checked' : '') + ' lay-filter="enableSwitch">';
+                }},
+                {field: 'updateTime', title: '更新时间', width: 170}
+            ]]
+        });
+
+        form.on('submit(productSearchBtn)', function (data) {
+            table.reload('productTable', {
+                where: {source: data.field.source, keywords: data.field.keywords}
+            });
+            return false;
+        });
+
+        form.on('switch(enableSwitch)', function (obj) {
+            var id = obj.value;
+            var enabled = obj.elem.checked ? 1 : 0;
+            $.post('/api/crawl/product/toggle', {id: id, enabled: enabled}, function (res) {
+                if (res.code !== 0) {
+                    layer.msg(res.msg || '操作失败', {icon: 2});
+                    obj.elem.checked = !obj.elem.checked;
+                    form.render('checkbox');
+                } else {
+                    layer.msg('已' + (enabled === 1 ? '启用' : '停用'), {icon: 1, time: 1200});
+                }
+            }, 'json');
+        });
+
+        // ---------------------------------------------------------------- 采集日志
+        table.render({
+            elem: '#logTable',
+            url: '/api/crawl/logs',
+            method: 'get',
+            page: false,
+            // 日间每半小时 × 4 个数据源，一天就有 80 多条；多留一些才看得到完整节奏
+            limit: 60,
+            cols: [[
+                {field: 'id', title: '#', width: 70},
+                {field: 'source', title: '数据源', width: 110, templet: function (r) {
+                    return SOURCE_NAME[r.source] || r.source;
+                }},
+                {field: 'taskType', title: '任务', width: 110, templet: function (r) {
+                    var map = {
+                        'DISCOVER': '<span class="layui-badge layui-bg-cyan">发现品种</span>',
+                        'QUOTE': '<span class="layui-badge layui-bg-blue">完整采集</span>',
+                        'INTRADAY': '<span class="layui-badge layui-bg-green">当天最新价</span>',
+                        'SETTLE': '<span class="layui-badge layui-bg-orange">上一工作日终值</span>',
+                        'REALTIME': '<span class="layui-badge layui-bg-green">当天最新价</span>'
+                    };
+                    return map[r.taskType] || '<span class="layui-badge">' + (r.taskType || '-') + '</span>';
+                }},
+                {field: 'status', title: '状态', width: 90, templet: function (r) {
+                    if (r.status === 1) return '<span class="layui-badge layui-bg-green">成功</span>';
+                    if (r.status === -2) return '<span class="layui-badge layui-bg-orange">跳过</span>';
+                    return '<span class="layui-badge">失败</span>';
+                }},
+                {field: 'requestCount', title: '请求数', width: 90},
+                {field: 'recordCount', title: '入库', width: 90},
+                {field: 'costMs', title: '耗时', width: 100, templet: function (r) {
+                    var ms = Number(r.costMs || 0);
+                    return ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : ms + ' ms';
+                }},
+                {field: 'message', title: '说明', minWidth: 240},
+                {field: 'startTime', title: '开始时间', width: 170}
+            ]]
+        });
+
+        function reloadProducts() { table.reload('productTable'); }
+        function reloadAll() {
+            table.reload('logTable');
+            table.reload('productTable');
+        }
+    });
+</script>
+</body>
+</html>

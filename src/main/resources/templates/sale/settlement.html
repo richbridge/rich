@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>提金结算</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-summary {
+            font-size: 13px;
+            color: #666;
+            padding: 0 0 10px 2px;
+        }
+
+        .rich-summary b {
+            color: #f78400;
+            font-size: 15px;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="layui-card">
+        <div class="layui-card-header">精矿结算单提金开票情况</div>
+        <div class="layui-card-body">
+            <div class="rich-summary" id="sumSettle">--</div>
+            <table class="layui-hide" id="tableSettlement" lay-filter="tableSettlement"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="toolbarSettlement">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增结算
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="rowBarSettlement">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="settlementFormWrap" style="display: none;">
+    <form class="layui-form" id="settlementForm" lay-filter="settlementForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结算批次</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="batchNo" placeholder="如 浮精241-246回" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">品种</label>
+                    <div class="layui-input-block">
+                        <select name="category">
+                            <option value="浮选金">浮选金</option>
+                            <option value="合质金">合质金</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">提金日</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="goldPickDate" id="pickDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结算价格</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="settlePrice" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">提金重量(g)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="goldWeight" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结算金额(元)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="settleAmount" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">开票情况</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="invoiceStatus" placeholder="如 9月开票" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="settlementSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="settlementCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'laydate', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var laydate = layui.laydate;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        var formIndex = null;
+
+        function num(v, d) {
+            var n = Number(v || 0);
+            if (isNaN(n)) n = 0;
+            return n.toLocaleString('zh-CN', {
+                minimumFractionDigits: d === undefined ? 2 : d,
+                maximumFractionDigits: d === undefined ? 2 : d
+            });
+        }
+
+        function reloadSummary() {
+            $.get('/api/sale/summary', function (res) {
+                if (res.code !== 0) return;
+                var d = res.data;
+                $('#sumSettle').html('提金重量合计 <b>' + num(d.settlementWeight, 2) + '</b> g　'
+                    + '结算金额合计 <b>' + num(d.settlementAmount, 2) + '</b> 元（约 <b>'
+                    + num(Number(d.settlementAmount || 0) / 10000, 2) + '</b> 万元）　'
+                    + '累计已结算 <b>' + num(d.settledGold, 2) + '</b> g　'
+                    + '欠金量 <b>' + num(d.oweGold, 2) + '</b> g');
+            });
+        }
+
+        reloadSummary();
+
+        table.render({
+            elem: '#tableSettlement',
+            url: '/api/sale/settlement/list',
+            method: 'get',
+            toolbar: '#toolbarSettlement',
+            defaultToolbar: ['filter', 'exports'],
+            page: false,
+            cols: [[
+                {field: 'batchNo', title: '结算批次', minWidth: 160, sort: true},
+                {field: 'category', title: '品种', width: 100},
+                {field: 'goldPickDate', title: '提金日', width: 120},
+                {field: 'settlePrice', title: '结算价格(元/克)', width: 150, templet: function (r) { return num(r.settlePrice, 2); }},
+                {field: 'goldWeight', title: '提金重量(g)', width: 130, templet: function (r) { return num(r.goldWeight, 2); }},
+                {field: 'settleAmount', title: '结算金额(元)', width: 160, templet: function (r) { return num(r.settleAmount, 2); }},
+                {
+                    field: 'invoiceStatus', title: '开票情况', width: 110,
+                    templet: function (r) {
+                        return r.invoiceStatus
+                            ? '<span class="layui-badge layui-bg-blue">' + r.invoiceStatus + '</span>'
+                            : '-';
+                    }
+                },
+                {field: 'remark', title: '备注', minWidth: 120},
+                {title: '操作', width: 120, fixed: 'right', toolbar: '#rowBarSettlement'}
+            ]]
+        });
+
+        table.on('toolbar(tableSettlement)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(tableSettlement)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除结算批次「' + (row.batchNo || '') + '」吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/sale/settlement/delete', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                            table.reload('tableSettlement');
+                            reloadSummary();
+                        } else {
+                            layer.msg(res.msg || '删除失败');
+                        }
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var data = row || {};
+            form.val('settlementForm', {
+                id: data.id || '',
+                batchNo: data.batchNo || '',
+                category: data.category || '浮选金',
+                goldPickDate: data.goldPickDate || '',
+                settlePrice: data.settlePrice === null || data.settlePrice === undefined ? '' : data.settlePrice,
+                goldWeight: data.goldWeight === null || data.goldWeight === undefined ? '' : data.goldWeight,
+                settleAmount: data.settleAmount === null || data.settleAmount === undefined ? '' : data.settleAmount,
+                invoiceStatus: data.invoiceStatus || '',
+                remark: data.remark || ''
+            });
+            laydate.render({elem: '#pickDate', type: 'date'});
+            formIndex = layer.open({
+                type: 1,
+                title: row ? '编辑结算记录' : '新增结算记录',
+                area: ['820px', '460px'],
+                content: $('#settlementFormWrap'),
+                end: function () { formIndex = null; }
+            });
+        }
+
+        form.on('submit(settlementSubmit)', function (d) {
+            var f = d.field;
+            function dec(v) {
+                if (v === '' || v === null || v === undefined) return null;
+                return Number(v);
+            }
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                batchNo: f.batchNo,
+                category: f.category,
+                goldPickDate: f.goldPickDate || null,
+                settlePrice: dec(f.settlePrice),
+                goldWeight: dec(f.goldWeight),
+                settleAmount: dec(f.settleAmount),
+                invoiceStatus: f.invoiceStatus,
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/sale/settlement/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(formIndex);
+                        table.reload('tableSettlement');
+                        reloadSummary();
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#settlementCancel').on('click', function () {
+            if (formIndex !== null) layer.close(formIndex);
+        });
+    });
+</script>
+</body>
+</html>

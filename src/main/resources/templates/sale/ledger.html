@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>发货台账</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-card-gap {
+            margin-bottom: 12px;
+        }
+
+        .rich-search-item {
+            display: inline-block;
+            margin-bottom: 0;
+        }
+
+        .rich-summary {
+            font-size: 13px;
+            color: #666;
+            padding: 6px 0 0 2px;
+        }
+
+        .rich-summary b {
+            color: #f78400;
+            font-size: 15px;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 搜索区 -->
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item rich-search-item" style="width: 220px;">
+                    <input type="text" name="keywords" placeholder="批次号 / 客户 / 样品编号" autocomplete="off"
+                           class="layui-input">
+                </div>
+                <div class="layui-form-item rich-search-item" style="width: 150px;">
+                    <input type="text" name="startDate" id="startDate" placeholder="开始日期" autocomplete="off"
+                           class="layui-input">
+                </div>
+                <div class="layui-form-item rich-search-item" style="width: 150px;">
+                    <input type="text" name="endDate" id="endDate" placeholder="结束日期" autocomplete="off"
+                           class="layui-input">
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 台账 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <div class="layui-tab layui-tab-brief" lay-filter="ledgerTab">
+                <ul class="layui-tab-title">
+                    <li class="layui-this" data-type="CONCENTRATE">浮选精矿粉</li>
+                    <li data-type="DORE">合质金</li>
+                </ul>
+                <div class="layui-tab-content" style="padding: 10px 0 0 0;">
+                    <div class="layui-tab-item layui-show">
+                        <div class="rich-summary" id="sumConcentrate">--</div>
+                        <table class="layui-hide" id="tableConcentrate" lay-filter="tableConcentrate"></table>
+                    </div>
+                    <div class="layui-tab-item">
+                        <div class="rich-summary" id="sumDore">--</div>
+                        <table class="layui-hide" id="tableDore" lay-filter="tableDore"></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 头部工具栏 -->
+<script type="text/html" id="toolbarConcentrate">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增精矿批次
+        </button>
+        <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="import">
+            <i class="layui-icon layui-icon-upload"></i>导入台账
+        </button>
+    </div>
+</script>
+<script type="text/html" id="toolbarDore">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增合质金批次
+        </button>
+    </div>
+</script>
+
+<!-- 行操作 -->
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 浮选精矿表单 -->
+<div id="formConcentrate" style="display: none;">
+    <form class="layui-form" id="editFormC" lay-filter="editFormC" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">批次号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="shipNo" placeholder="如 26-241回" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">客户</label>
+                    <div class="layui-input-block">
+                        <select name="customerName" id="buyerSelectC"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">发货日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="shipDate" id="shipDateC" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">毛重(T)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="grossWeight" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">皮重(T)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="tareWeight" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">扣袋(T)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="bagDeduct" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">净重(T)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="netWeight" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">水份(%)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="moisture" step="0.0001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">干重(t)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="dryWeight" step="0.001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结算品位</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="settleGrade" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实际金含量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="goldContent" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">返金量(g)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="returnGold" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">预提金量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="preExtractGold" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">品位差</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="gradeDiff" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">加工费</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="processFee" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">仲裁前品位</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="arbGrade" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">仲裁差</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="arbDiff" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="submitC">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelC">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 合质金表单 -->
+<div id="formDore" style="display: none;">
+    <form class="layui-form" id="editFormD" lay-filter="editFormD" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">样品编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="sampleNo" placeholder="如 20260920A1" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">客户</label>
+                    <div class="layui-input-block">
+                        <select name="customerName" id="buyerSelectD"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">发货日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="shipDate" id="shipDateD" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">溶火后重量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="postMeltWeight" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">留样后重量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="retainedWeight" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">金结算品位</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="goldGrade" step="0.0001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实际金含量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="goldContent" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">返金量(g)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="returnGold" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">已结算(g)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="settledGold" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">提金日</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="goldPickDate" id="pickDateD" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">银结算品位</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="silverGrade" step="0.0001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">外检</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="externalCheck" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="submitD">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelD">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'laydate', 'layer', 'jquery', 'element'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var laydate = layui.laydate;
+        var layer = layui.layer;
+        var element = layui.element;
+        var $ = layui.jquery;
+
+        var currentType = 'CONCENTRATE';
+        var formIndex = null;
+
+        /** 数值格式化。 */
+        function num(v, d) {
+            var n = Number(v || 0);
+            if (isNaN(n)) n = 0;
+            return n.toLocaleString('zh-CN', {
+                minimumFractionDigits: d === undefined ? 2 : d,
+                maximumFractionDigits: d === undefined ? 2 : d
+            });
+        }
+
+        /** 水份：库内为小数比例，展示为百分数。 */
+        function pct(v) {
+            if (v === null || v === undefined || v === '') return '';
+            return num(Number(v) * 100, 2) + '%';
+        }
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        laydate.render({elem: '#startDate', type: 'date'});
+        laydate.render({elem: '#endDate', type: 'date'});
+
+        // ------------------------------------------------------ 客户下拉
+        var BUYERS = ['烟台国大贸易有限公司'];
+        var buyerHtml = '';
+        for (var i = 0; i < BUYERS.length; i++) {
+            buyerHtml += '<option value="' + BUYERS[i] + '">' + BUYERS[i] + '</option>';
+        }
+        $('#buyerSelectC').html(buyerHtml);
+        $('#buyerSelectD').html(buyerHtml);
+        form.render('select');
+
+        // ------------------------------------------------------ 搜索条件
+        function searchWhere() {
+            var f = form.val('searchForm');
+            return {keywords: f.keywords, startDate: f.startDate, endDate: f.endDate};
+        }
+
+        function reloadSummary() {
+            $.get('/api/sale/summary', function (res) {
+                if (res.code !== 0) return;
+                var d = res.data;
+                $('#sumConcentrate').html('干重合计 <b>' + num(d.dryWeight, 3) + '</b> t　'
+                    + '平均品位 <b>' + num(d.avgGrade, 2) + '</b> g/t　'
+                    + '金含量 <b>' + num(d.concentrateGold, 2) + '</b> g　'
+                    + '返金量 <b>' + num(d.returnGold, 2) + '</b> g　'
+                    + '批次 <b>' + d.concentrateBatches + '</b>');
+                $('#sumDore').html('发货重量 <b>' + num(d.doreWeight, 2) + '</b> g　'
+                    + '金含量 <b>' + num(d.doreGold, 2) + '</b> g　'
+                    + '已结算 <b>' + num(d.settledGold, 2) + '</b> g　'
+                    + '批次 <b>' + d.doreBatches + '</b>');
+            });
+        }
+
+        reloadSummary();
+
+        // ------------------------------------------------------ 精矿台账
+        table.render({
+            elem: '#tableConcentrate',
+            url: '/api/sale/shipment/page',
+            method: 'get',
+            where: {productType: 'CONCENTRATE'},
+            toolbar: '#toolbarConcentrate',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 20,
+            limits: [20, 50, 100],
+            cols: [[
+                {field: 'shipNo', title: '批次号', width: 120, fixed: 'left', sort: true},
+                {
+                    field: 'rowKind', title: '类别', width: 90,
+                    templet: function (r) {
+                        if (r.rowKind === 'PREV_YEAR') return '<span class="layui-badge">上年结余</span>';
+                        if (r.rowKind === 'ARBITRATION') return '<span class="layui-badge layui-bg-orange">仲裁</span>';
+                        return '';
+                    }
+                },
+                {field: 'customerName', title: '客户', width: 180},
+                {field: 'shipDate', title: '发货日期', width: 110, sort: true},
+                {field: 'grossWeight', title: '毛重(T)', width: 95, templet: function (r) { return num(r.grossWeight, 2); }},
+                {field: 'tareWeight', title: '皮重(T)', width: 95, templet: function (r) { return num(r.tareWeight, 2); }},
+                {field: 'netWeight', title: '净重(T)', width: 95, templet: function (r) { return num(r.netWeight, 2); }},
+                {field: 'moisture', title: '水份', width: 90, templet: function (r) { return pct(r.moisture); }},
+                {field: 'dryWeight', title: '干重(t)', width: 95, templet: function (r) { return num(r.dryWeight, 3); }},
+                {field: 'settleGrade', title: '结算品位', width: 100, templet: function (r) { return num(r.settleGrade, 2); }},
+                {field: 'goldContent', title: '实际金含量(g)', width: 120, templet: function (r) { return num(r.goldContent, 2); }},
+                {field: 'returnGold', title: '返金量(g)', width: 110, templet: function (r) { return num(r.returnGold, 2); }},
+                {field: 'arbDiff', title: '仲裁差(g)', width: 110, templet: function (r) { return num(r.arbDiff, 2); }},
+                {field: 'preExtractGold', title: '预提金量(g)', width: 110, templet: function (r) { return num(r.preExtractGold, 2); }},
+                {field: 'processFee', title: '加工费', width: 100, templet: function (r) { return num(r.processFee, 2); }},
+                {field: 'arbGrade', title: '仲裁前品位', width: 110, templet: function (r) { return num(r.arbGrade, 2); }},
+                {field: 'remark', title: '备注', minWidth: 120},
+                {title: '操作', width: 120, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        // ------------------------------------------------------ 合质金台账
+        table.render({
+            elem: '#tableDore',
+            url: '/api/sale/shipment/page',
+            method: 'get',
+            where: {productType: 'DORE'},
+            toolbar: '#toolbarDore',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 20,
+            limits: [20, 50, 100],
+            cols: [[
+                {field: 'sampleNo', title: '样品编号', width: 140, fixed: 'left', sort: true},
+                {field: 'customerName', title: '客户', width: 180},
+                {field: 'shipDate', title: '发货日期', width: 110, sort: true},
+                {field: 'postMeltWeight', title: '溶火后重量(g)', width: 130, templet: function (r) { return num(r.postMeltWeight, 2); }},
+                {field: 'retainedWeight', title: '留样后重量(g)', width: 130, templet: function (r) { return num(r.retainedWeight, 2); }},
+                {field: 'goldGrade', title: '金结算品位(%)', width: 130, templet: function (r) { return num(r.goldGrade, 4); }},
+                {field: 'goldContent', title: '实际金含量(g)', width: 130, templet: function (r) { return num(r.goldContent, 2); }},
+                {field: 'returnGold', title: '返金量(g)', width: 120, templet: function (r) { return num(r.returnGold, 2); }},
+                {field: 'settledGold', title: '已结算(g)', width: 120, templet: function (r) { return num(r.settledGold, 2); }},
+                {field: 'silverGrade', title: '银结算品位(%)', width: 130, templet: function (r) { return num(r.silverGrade, 4); }},
+                {field: 'goldPickDate', title: '提金日', width: 110},
+                {field: 'externalCheck', title: '外检', width: 100},
+                {field: 'remark', title: '备注', minWidth: 120},
+                {title: '操作', width: 120, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        // ------------------------------------------------------ Tab 切换
+        element.on('tab(ledgerTab)', function (data) {
+            var type = $(this).attr('data-type');
+            currentType = type || 'CONCENTRATE';
+        });
+
+        // ------------------------------------------------------ 搜索
+        form.on('submit(searchBtn)', function (data) {
+            var w = searchWhere();
+            w.productType = 'CONCENTRATE';
+            table.reload('tableConcentrate', {where: w, page: {curr: 1}});
+            w.productType = 'DORE';
+            table.reload('tableDore', {where: w, page: {curr: 1}});
+            return false;
+        });
+
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('tableConcentrate', {
+                    where: {productType: 'CONCENTRATE', keywords: '', startDate: '', endDate: ''},
+                    page: {curr: 1}
+                });
+                table.reload('tableDore', {
+                    where: {productType: 'DORE', keywords: '', startDate: '', endDate: ''},
+                    page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        // ------------------------------------------------------ 行工具
+        function bindRow(filter, formSelector, type) {
+            table.on('tool(' + filter + ')', function (obj) {
+                var row = obj.data;
+                if (obj.event === 'edit') {
+                    openForm(row, formSelector, type);
+                } else if (obj.event === 'del') {
+                    var name = row.shipNo || row.sampleNo || '';
+                    layer.confirm('确认删除「' + esc(name) + '」吗？', {icon: 3, title: '提示'}, function (i) {
+                        layer.close(i);
+                        $.post('/api/sale/shipment/delete', {id: row.id}, function (res) {
+                            if (res.code === 0) {
+                                layer.msg('删除成功', {icon: 1});
+                                table.reload(filter);
+                                reloadSummary();
+                            } else {
+                                layer.msg(res.msg || '删除失败');
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        bindRow('tableConcentrate', '#formConcentrate', 'CONCENTRATE');
+        bindRow('tableDore', '#formDore', 'DORE');
+
+        // ------------------------------------------------------ 工具栏
+        table.on('toolbar(tableConcentrate)', function (obj) {
+            if (obj.event === 'add') {
+                openForm(null, '#formConcentrate', 'CONCENTRATE');
+            } else if (obj.event === 'import') {
+                layer.confirm('将按配置的台账路径重新导入，点价 / 结算 / 点价情况会整表重刷，确认继续？',
+                    {icon: 3, title: '导入确认'}, function (i) {
+                        layer.close(i);
+                        var loadIdx = layer.msg('导入中…', {icon: 16, time: 0});
+                        $.post('/api/sale/import', {}, function (res) {
+                            layer.close(loadIdx);
+                            if (res.code === 0) {
+                                var d = res.data;
+                                layer.msg('导入完成：精矿 ' + d.concentrate + ' 条，合质金 ' + d.dore
+                                    + ' 条，点价 ' + d.pricing + ' 条，结算 ' + d.settlement + ' 条');
+                                table.reload('tableConcentrate');
+                                table.reload('tableDore');
+                                reloadSummary();
+                            } else {
+                                layer.msg(res.msg || '导入失败');
+                            }
+                        });
+                    });
+            }
+        });
+
+        table.on('toolbar(tableDore)', function (obj) {
+            if (obj.event === 'add') {
+                openForm(null, '#formDore', 'DORE');
+            }
+        });
+
+        // ------------------------------------------------------ 表单
+        function openForm(row, formSelector, type) {
+            var data = row || {};
+            var filter = type === 'CONCENTRATE' ? 'editFormC' : 'editFormD';
+            form.val(filter, {
+                id: data.id || '',
+                shipNo: data.shipNo || '',
+                sampleNo: data.sampleNo || '',
+                customerName: data.customerName || BUYERS[0],
+                shipDate: data.shipDate || '',
+                grossWeight: data.grossWeight === null || data.grossWeight === undefined ? '' : data.grossWeight,
+                tareWeight: data.tareWeight === null || data.tareWeight === undefined ? '' : data.tareWeight,
+                bagDeduct: data.bagDeduct === null || data.bagDeduct === undefined ? '' : data.bagDeduct,
+                netWeight: data.netWeight === null || data.netWeight === undefined ? '' : data.netWeight,
+                moisture: data.moisture === null || data.moisture === undefined ? '' : data.moisture,
+                dryWeight: data.dryWeight === null || data.dryWeight === undefined ? '' : data.dryWeight,
+                settleGrade: data.settleGrade === null || data.settleGrade === undefined ? '' : data.settleGrade,
+                goldContent: data.goldContent === null || data.goldContent === undefined ? '' : data.goldContent,
+                returnGold: data.returnGold === null || data.returnGold === undefined ? '' : data.returnGold,
+                preExtractGold: data.preExtractGold === null || data.preExtractGold === undefined ? '' : data.preExtractGold,
+                gradeDiff: data.gradeDiff === null || data.gradeDiff === undefined ? '' : data.gradeDiff,
+                processFee: data.processFee === null || data.processFee === undefined ? '' : data.processFee,
+                arbGrade: data.arbGrade === null || data.arbGrade === undefined ? '' : data.arbGrade,
+                arbDiff: data.arbDiff === null || data.arbDiff === undefined ? '' : data.arbDiff,
+                postMeltWeight: data.postMeltWeight === null || data.postMeltWeight === undefined ? '' : data.postMeltWeight,
+                retainedWeight: data.retainedWeight === null || data.retainedWeight === undefined ? '' : data.retainedWeight,
+                goldGrade: data.goldGrade === null || data.goldGrade === undefined ? '' : data.goldGrade,
+                settledGold: data.settledGold === null || data.settledGold === undefined ? '' : data.settledGold,
+                silverGrade: data.silverGrade === null || data.silverGrade === undefined ? '' : data.silverGrade,
+                goldPickDate: data.goldPickDate || '',
+                externalCheck: data.externalCheck || '',
+                remark: data.remark || ''
+            });
+
+            formIndex = layer.open({
+                type: 1,
+                title: row ? '编辑发货记录' : '新增发货记录',
+                area: ['980px', '600px'],
+                content: $(formSelector),
+                end: function () {
+                    formIndex = null;
+                }
+            });
+
+            if (type === 'CONCENTRATE') {
+                laydate.render({elem: '#shipDateC', type: 'date'});
+            } else {
+                laydate.render({elem: '#shipDateD', type: 'date'});
+                laydate.render({elem: '#pickDateD', type: 'date'});
+            }
+        }
+
+        function submitForm(filter, type) {
+            var f = form.val(filter);
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                productType: type,
+                shipNo: type === 'CONCENTRATE' ? f.shipNo : f.sampleNo,
+                sampleNo: type === 'DORE' ? f.sampleNo : null,
+                customerName: f.customerName,
+                shipDate: f.shipDate || null,
+                remark: f.remark
+            };
+            function dec(v) {
+                if (v === '' || v === null || v === undefined) return null;
+                return Number(v);
+            }
+            if (type === 'CONCENTRATE') {
+                payload.rowKind = 'NORMAL';
+                payload.grossWeight = dec(f.grossWeight);
+                payload.tareWeight = dec(f.tareWeight);
+                payload.bagDeduct = dec(f.bagDeduct);
+                payload.netWeight = dec(f.netWeight);
+                payload.moisture = dec(f.moisture);
+                payload.dryWeight = dec(f.dryWeight);
+                payload.settleGrade = dec(f.settleGrade);
+                payload.goldContent = dec(f.goldContent);
+                payload.returnGold = dec(f.returnGold);
+                payload.preExtractGold = dec(f.preExtractGold);
+                payload.gradeDiff = dec(f.gradeDiff);
+                payload.processFee = dec(f.processFee);
+                payload.arbGrade = dec(f.arbGrade);
+            } else {
+                payload.rowKind = 'NORMAL';
+                payload.postMeltWeight = dec(f.postMeltWeight);
+                payload.retainedWeight = dec(f.retainedWeight);
+                payload.goldGrade = dec(f.goldGrade);
+                payload.goldContent = dec(f.goldContent);
+                payload.returnGold = dec(f.returnGold);
+                payload.settledGold = dec(f.settledGold);
+                payload.silverGrade = dec(f.silverGrade);
+                payload.goldPickDate = f.goldPickDate || null;
+                payload.externalCheck = f.externalCheck;
+            }
+
+            $.ajax({
+                url: '/api/sale/shipment/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(formIndex);
+                        table.reload(type === 'CONCENTRATE' ? 'tableConcentrate' : 'tableDore');
+                        reloadSummary();
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () {
+                    layer.msg('请求异常，请稍后重试');
+                }
+            });
+            return false;
+        }
+
+        form.on('submit(submitC)', function () {
+            return submitForm('editFormC', 'CONCENTRATE');
+        });
+        form.on('submit(submitD)', function () {
+            return submitForm('editFormD', 'DORE');
+        });
+
+        $('#cancelC').on('click', function () {
+            if (formIndex !== null) layer.close(formIndex);
+        });
+        $('#cancelD').on('click', function () {
+            if (formIndex !== null) layer.close(formIndex);
+        });
+    });
+</script>
+</body>
+</html>

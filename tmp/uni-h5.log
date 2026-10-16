@@ -1,0 +1,21 @@
+
+> rich-app@1.0.0 dev:h5
+> node scripts/dev.js
+
+Please note that in running mode, due to log output, sourcemap, and uncompressed source code, the performance and package size are not as good as release mode.
+Vite is compiled on demand, and clicking on an uncompiled page at runtime will compile first and then load, resulting in a slower display, and there is no such problem after release.
+Compiler version: 5.31（vue3）
+Compiling...
+[36m
+  vite v5.2.8[39m[32m dev server running at:
+[39m
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://172.18.66.150:[1m5173[22m/[39m
+
+  [36mready in 2159ms.[39m
+
+(node:1988) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2m14:47:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/pages/index/index.vue[22m
+[2m14:47:18[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/pages/index/index.vue?vue&type=style&index=0&scoped=1cf27b2a&lang.css[22m
+[2m14:48:19[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/pages/index/index.vue[22m

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>角色权限</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+
+        .rich-gap { margin-bottom: 12px; }
+
+        .role-panel { min-height: 460px; }
+
+        .role-active { background: #f2f7ff !important; }
+
+        .perm-box {
+            border: 1px solid #eee;
+            padding: 10px;
+            min-height: 420px;
+            overflow: auto;
+            background: #fff;
+        }
+
+        .perm-toolbar { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md4">
+            <div class="layui-card rich-gap role-panel">
+                <div class="layui-card-header">角色列表</div>
+                <div class="layui-card-body">
+                    <div class="layui-btn-container" style="margin-bottom: 8px;">
+                        <button class="layui-btn layui-btn-sm" id="roleAdd">
+                            <i class="layui-icon layui-icon-add-1"></i>新增角色
+                        </button>
+                        <button class="layui-btn layui-btn-sm layui-btn-normal" id="ruleRefresh">刷新鉴权缓存</button>
+                    </div>
+                    <table class="layui-hide" id="roleTable" lay-filter="roleTable"></table>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md8">
+            <div class="layui-card rich-gap role-panel">
+                <div class="layui-card-header">
+                    <span id="permTitle">资源授权</span>
+                    <span class="layui-word-aux" style="font-size: 12px;">（勾选后自动保存，父节点会自动带出）</span>
+                </div>
+                <div class="layui-card-body">
+                    <div class="perm-toolbar layui-btn-container">
+                        <button class="layui-btn layui-btn-xs" id="checkAll">全选</button>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary" id="clearAll">清空</button>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary" id="expandAll">展开</button>
+                        <button class="layui-btn layui-btn-xs layui-btn-primary" id="foldAll">折叠</button>
+                        <span class="layui-word-aux" style="margin-left: 8px;">修改后无需重启，即时生效</span>
+                    </div>
+                    <div class="perm-box" id="permTree"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="roleFormWrap" style="display: none;">
+    <form class="layui-form" id="roleForm" lay-filter="roleForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">角色编码</label>
+            <div class="layui-input-block">
+                <input type="text" name="roleCode" lay-verify="required" autocomplete="off"
+                       placeholder="如 SALE_CLERK" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">角色名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="roleName" lay-verify="required" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">说明</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">排序号</label>
+            <div class="layui-input-block">
+                <input type="number" name="sortNo" value="1" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">状态</label>
+            <div class="layui-input-block">
+                <select name="status">
+                    <option value="1">启用</option>
+                    <option value="0">停用</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="roleSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="roleCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'tree'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery, tree = layui.tree;
+        var currentRoleId = null;
+        var index = null;
+        var permTree = null;
+
+        table.render({
+            elem: '#roleTable',
+            url: '/api/system/roles',
+            method: 'get',
+            page: false,
+            size: 'sm',
+            cols: [[
+                {field: 'roleName', title: '角色', minWidth: 120},
+                {title: '操作', width: 110, fixed: 'right', toolbar: '#roleRowBar'}
+            ]],
+            // 默认选中第一个角色，右侧授权树不用等用户手动点一下才有内容
+            done: function (res) {
+                if (!currentRoleId && res.data && res.data.length) {
+                    $('.layui-table-body tr').first().addClass('role-active');
+                    loadPermissions(res.data[0]);
+                }
+            }
+        });
+
+        table.on('tool(roleTable)', function (obj) {
+            if (obj.event === 'edit') {
+                openRoleForm(obj.data);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除角色「' + obj.data.roleName + '」？', {icon: 3}, function (i) {
+                    layer.close(i);
+                    $.ajax({
+                        url: '/api/system/role/delete?id=' + obj.data.id, type: 'DELETE',
+                        success: function (res) {
+                            layer.msg(res.code === 0 ? '已删除' : ('失败：' + res.msg));
+                            table.reload('roleTable');
+                        }
+                    });
+                });
+            }
+        });
+
+        table.on('row(roleTable)', function (obj) {
+            $('#roleTable').next().find('.role-active').removeClass('role-active');
+            obj.tr.addClass('role-active');
+            loadPermissions(obj.data);
+        });
+
+        var permIndex = {};
+        var allPermIds = [];
+
+        function loadPermissions(role) {
+            currentRoleId = role.id;
+            $('#permTitle').text('资源授权 · ' + role.roleName);
+            $.get('/api/system/permissions', function (res) {
+                if (res.code !== 0) {
+                    return;
+                }
+                permIndex = {};
+                allPermIds = [];
+                layui.each(res.data, function (i, p) {
+                    permIndex[p.id] = p;
+                    allPermIds.push(p.id);
+                });
+                var treeData = buildTree(res.data);
+                $.get('/api/system/role/permissions?roleId=' + role.id, function (r2) {
+                    var checked = r2.code === 0 ? r2.data : [];
+                    var checkIds = {};
+                    layui.each(checked, function (i, id) {
+                        checkIds[id] = true;
+                    });
+                    markChecked(treeData, checkIds);
+                    permTree = tree.render({
+                        elem: '#permTree',
+                        data: treeData,
+                        id: 'permTree',
+                        showCheckbox: true,
+                        showLine: true,
+                        accordion: false,
+                        spreadAll: false,
+                        customName: {id: 'id', title: 'title', children: 'children'},
+                        oncheck: function (obj) {
+                            save(listChecked());
+                        }
+                    });
+                });
+            });
+        }
+
+        function buildTree(rows) {
+            var map = {}, roots = [];
+            layui.each(rows, function (i, p) {
+                map[p.id] = {
+                    id: p.id,
+                    title: p.permName + ' [' + p.permCode + ']' + (p.path ? '  ' + p.path : ''),
+                    children: []
+                };
+            });
+            layui.each(rows, function (i, p) {
+                if (p.parentId && map[p.parentId]) {
+                    map[p.parentId].children.push(map[p.id]);
+                } else {
+                    roots.push(map[p.id]);
+                }
+            });
+            return roots;
+        }
+
+        function markChecked(nodes, checkIds) {
+            layui.each(nodes, function (i, n) {
+                n.checked = !!checkIds[n.id];
+                markChecked(n.children, checkIds);
+            });
+        }
+
+        function listChecked() {
+            var selected = tree.getChecked('permTree');
+            var ids = [];
+            (function walk(list) {
+                layui.each(list, function (i, n) {
+                    ids.push(n.id);
+                    walk(n.children || []);
+                });
+            })(selected);
+            return ids;
+        }
+
+        function save(ids) {
+            if (!currentRoleId) {
+                return;
+            }
+            $.ajax({
+                url: '/api/system/role/grant?roleId=' + currentRoleId,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(ids),
+                success: function (res) {
+                    layer.msg(res.code === 0
+                        ? ('已保存 ' + (res.data ? res.data.granted : 0) + ' 项授权')
+                        : ('保存失败：' + res.msg), {time: 1200});
+                }
+            });
+        }
+
+        $('#checkAll').on('click', function () {
+            tree.setChecked('permTree', allPermIds);
+            save(listChecked());
+        });
+        $('#clearAll').on('click', function () {
+            tree.setChecked('permTree', []);
+            save([]);
+        });
+        $('#expandAll').on('click', function () {
+            tree.reload('permTree', {});
+            layer.msg('已重置展开状态');
+        });
+        $('#foldAll').on('click', function () {
+            tree.reload('permTree', {});
+        });
+        $('#ruleRefresh').on('click', function () {
+            $.post('/api/system/refresh-rules', function (res) {
+                layer.msg(res.code === 0 ? '鉴权规则已刷新' : res.msg);
+            });
+        });
+
+        $('#roleAdd').on('click', function () {
+            openRoleForm(null);
+        });
+
+        function openRoleForm(data) {
+            index = layer.open({
+                type: 1, title: data ? '编辑角色' : '新增角色',
+                area: ['520px', '420px'], content: $('#roleFormWrap')
+            });
+            form.val('roleForm', {id: '', roleCode: '', roleName: '', remark: '', sortNo: 1, status: '1'});
+            if (data) {
+                form.val('roleForm', {
+                    id: data.id, roleCode: data.roleCode, roleName: data.roleName,
+                    remark: data.remark, sortNo: data.sortNo, status: String(data.status)
+                });
+            }
+        }
+
+        form.on('submit(roleSubmit)', function (data) {
+            $.ajax({
+                url: '/api/system/role/save', type: 'POST',
+                contentType: 'application/json', data: JSON.stringify(data.field),
+                success: function (res) {
+                    if (res.code !== 0) {
+                        layer.msg('保存失败：' + res.msg);
+                        return;
+                    }
+                    layer.close(index);
+                    layer.msg('保存成功');
+                    table.reload('roleTable');
+                }
+            });
+            return false;
+        });
+
+        $('#roleCancel').on('click', function () {
+            layer.close(index);
+        });
+    });
+</script>
+
+<script type="text/html" id="roleRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>资源菜单</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+
+        .rich-gap { margin-bottom: 12px; }
+
+        .perm-tree-box { padding: 8px; background: #fff; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="layui-row layui-col-space12">
+        <div class="layui-col-md7">
+            <div class="layui-card rich-gap">
+                <div class="layui-card-header">
+                    权限资源树
+                    <span class="layui-word-aux" style="font-size: 12px;">
+                        MODULE 模块 / MENU 菜单 / API 接口模式 / ALIAS 别名
+                    </span>
+                </div>
+                <div class="layui-card-body">
+                    <div class="layui-btn-container" style="margin-bottom: 8px;">
+                        <button class="layui-btn layui-btn-sm" id="addRoot">新增模块</button>
+                        <button class="layui-btn layui-btn-sm layui-btn-primary" id="reloadTree">刷新</button>
+                    </div>
+                    <div class="perm-tree-box" id="permTree"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md5">
+            <div class="layui-card rich-gap">
+                <div class="layui-card-header">资源明细</div>
+                <div class="layui-card-body">
+                    <form class="layui-form" id="permForm" lay-filter="permForm">
+                        <input type="hidden" name="id">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">资源名称</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="permName" autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">权限码</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="permCode" autocomplete="off"
+                                       placeholder="模块用 sale；菜单用 sale:ledger" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">类型</label>
+                            <div class="layui-input-block">
+                                <select name="permType">
+                                    <option value="MODULE">模块</option>
+                                    <option value="MENU">菜单</option>
+                                    <option value="API">接口</option>
+                                    <option value="ALIAS">别名</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">路径</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="path" autocomplete="off"
+                                       placeholder="/sale/ledger 或 /api/sale/**" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">图标</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="icon" autocomplete="off"
+                                       placeholder="layui-icon-cart" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">父节点</label>
+                            <div class="layui-input-block">
+                                <select name="parentId" id="parentSelect"></select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">排序号</label>
+                            <div class="layui-input-block">
+                                <input type="number" name="sortNo" value="1" autocomplete="off" class="layui-input">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">状态</label>
+                            <div class="layui-input-block">
+                                <select name="status">
+                                    <option value="1">启用</option>
+                                    <option value="0">停用</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="layui-form-item" style="text-align: right;">
+                            <button class="layui-btn layui-btn-sm" lay-submit lay-filter="permSubmit">保存</button>
+                            <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" id="permDel">删除
+                            </button>
+                            <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="permReset">
+                                清空
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['form', 'layer', 'jquery', 'tree'], function () {
+        var form = layui.form, layer = layui.layer, $ = layui.jquery, tree = layui.tree;
+        var rows = [];
+
+        function buildTree(list) {
+            var map = {}, roots = [];
+            layui.each(list, function (i, p) {
+                map[p.id] = {
+                    id: p.id,
+                    title: p.permName + '  <span style="color:#8a8f99">[' + p.permCode + ']</span>'
+                        + (p.path ? '  <span style="color: #AA3130">' + p.path + '</span>' : ''),
+                    spread: true,
+                    children: []
+                };
+            });
+            layui.each(list, function (i, p) {
+                if (p.parentId && map[p.parentId]) {
+                    map[p.parentId].children.push(map[p.id]);
+                } else {
+                    roots.push(map[p.id]);
+                }
+            });
+            return roots;
+        }
+
+        function load() {
+            $.get('/api/system/permissions', function (res) {
+                if (res.code !== 0) {
+                    layer.msg('加载失败：' + res.msg);
+                    return;
+                }
+                rows = res.data;
+                tree.render({
+                    elem: '#permTree',
+                    data: buildTree(rows),
+                    id: 'permTree',
+                    showLine: true,
+                    click: function (obj) {
+                        var p = null;
+                        layui.each(rows, function (i, item) {
+                            if (item.id === obj.data.id) {
+                                p = item;
+                            }
+                        });
+                        if (p) {
+                            fill(p);
+                        }
+                    }
+                });
+                var html = '<option value="0">（根节点）</option>';
+                layui.each(rows, function (i, p) {
+                    html += '<option value="' + p.id + '">' + p.permName + ' / ' + p.permCode + '</option>';
+                });
+                $('#parentSelect').html(html);
+                form.render('select');
+            });
+        }
+
+        function fill(p) {
+            form.val('permForm', {
+                id: p.id, permName: p.permName, permCode: p.permCode, permType: p.permType,
+                path: p.path, icon: p.icon, parentId: String(p.parentId), sortNo: p.sortNo,
+                status: String(p.status)
+            });
+        }
+
+        form.on('submit(permSubmit)', function (data) {
+            $.ajax({
+                url: '/api/system/permission/save', type: 'POST',
+                contentType: 'application/json', data: JSON.stringify(data.field),
+                success: function (res) {
+                    layer.msg(res.code === 0 ? '保存成功' : ('失败：' + res.msg));
+                    load();
+                }
+            });
+            return false;
+        });
+
+        $('#permDel').on('click', function () {
+            var id = $('input[name=id]').val();
+            if (!id) {
+                layer.msg('请先选中要删除的资源');
+                return;
+            }
+            layer.confirm('会连同子资源一起删除，且同时回收角色授权，确认继续？', {icon: 3}, function (i) {
+                layer.close(i);
+                $.ajax({
+                    url: '/api/system/permission/delete?id=' + id, type: 'DELETE',
+                    success: function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : ('失败：' + res.msg));
+                        form.val('permForm', {
+                            id: '', permName: '', permCode: '', path: '', icon: '', parentId: '0', sortNo: 1
+                        });
+                        load();
+                    }
+                });
+            });
+        });
+
+        $('#permReset').on('click', function () {
+            form.val('permForm', {
+                id: '', permName: '', permCode: '', permType: 'MENU', path: '', icon: '',
+                parentId: '0', sortNo: 1, status: '1'
+            });
+        });
+
+        $('#addRoot').on('click', function () {
+            $('#permReset').trigger('click');
+        });
+        $('#reloadTree').on('click', load);
+
+        load();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>开放接口文档</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+
+        .rich-gap { margin-bottom: 12px; }
+
+        .api-conv { line-height: 2; }
+
+        .api-conv code {
+            background: #f6f6f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #AA3130;
+        }
+
+        .perm-badge {
+            display: inline-block;
+            padding: 0 6px;
+            border: 1px solid #d2d2d2;
+            border-radius: 3px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .perm-badge.free { color: #009688; border-color: #009688; }
+
+        .method {
+            display: inline-block;
+            min-width: 46px;
+            text-align: center;
+            padding: 1px 6px;
+            border-radius: 3px;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .method.get { background: #1E9FFF; }
+
+        .method.post { background: #009688; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-gap">
+        <div class="layui-card-header">调用约定</div>
+        <div class="layui-card-body api-conv">
+            <div>统一前缀：<code>/openapi</code>，响应体：<code>{ code, msg, data, count }</code>，
+                <code>code = 0</code> 表示成功，其余为失败。</div>
+            <div>鉴权：除登录与文档接口外，请求头需带
+                <code>satoken: &lt;token&gt;</code> 或
+                <code>Authorization: Bearer &lt;token&gt;</code>。
+                未带 token 返回 401，无数据权限返回 403。</div>
+            <div id="convLine" class="layui-word-aux">加载中…</div>
+            <div>
+                <button class="layui-btn layui-btn-sm layui-btn-normal" id="copyToken">复制当前 token</button>
+                <span class="layui-word-aux">移动端 / 第三方系统对接时取用；token 取自当前登录会话</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-card rich-gap">
+        <div class="layui-card-header">
+            接口清单
+            <span class="layui-word-aux" style="font-size: 12px;">（权限列标「-」表示该接口无需额外授权）</span>
+        </div>
+        <div class="layui-card-body">
+            <table class="layui-hide" id="apiTable" lay-filter="apiTable"></table>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-header">一键自检</div>
+        <div class="layui-card-body">
+            <div class="layui-btn-container">
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/system/menu">菜单接口</button>
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/dashboard/modules">总览模块</button>
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/price/summary">价格概况</button>
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/sale/summary">销售指标</button>
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/inventory/overview">盘点总览</button>
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/archive/volumes?limit=3">档案案卷</button>
+                <button class="layui-btn layui-btn-sm" data-api="/openapi/canteen/stock">食堂预警</button>
+            </div>
+            <pre id="probe" class="layui-code" style="margin-top: 12px;">点击上方按钮发起调用，结果在这里显示。</pre>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="methodTpl">
+    {{# if(d.method === 'GET'){ }}
+    <span class="method get">GET</span>
+    {{# } else { }}
+    <span class="method post">POST</span>
+    {{# } }}
+</script>
+
+<script type="text/html" id="permTpl">
+    {{# if(d.permission === '-'){ }}
+    <span class="perm-badge free">免授权</span>
+    {{# } else { }}
+    <span class="perm-badge">{{ d.permission }}</span>
+    {{# } }}
+</script>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery', 'element'], function () {
+        var table = layui.table, layer = layui.layer, $ = layui.jquery, element = layui.element;
+
+        $.get('/openapi/doc', function (res) {
+            if (res.code !== 0) {
+                layer.msg('文档加载失败：' + res.msg);
+                return;
+            }
+            var conv = res.data.convention;
+            $('#convLine').html('限流：<code>' + conv.rateLimit + '</code>；'
+                + '<code>' + conv.auth + '</code>');
+
+            var byGroup = {};
+            layui.each(res.data.groups, function (i, g) {
+                byGroup[g.name] = g.remark;
+            });
+
+            table.render({
+                elem: '#apiTable',
+                data: res.data.endpoints,
+                page: false,
+                cols: [[
+                    {field: 'group', title: '分组', width: 90},
+                    {field: 'method', title: '方法', width: 80, templet: '#methodTpl'},
+                    {field: 'path', title: '路径', minWidth: 260},
+                    {field: 'desc', title: '说明', minWidth: 220},
+                    {field: 'params', title: '参数', minWidth: 240},
+                    {field: 'permission', title: '所需权限', width: 120, templet: '#permTpl'}
+                ]]
+            });
+        });
+
+        $('[data-api]').on('click', function () {
+            var url = $(this).attr('data-api');
+            $('#probe').text('请求 ' + url + ' ...');
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function (res, status, xhr) {
+                    var text = JSON.stringify(res, null, 2);
+                    if (text.length > 2000) {
+                        text = text.substring(0, 2000) + '\n...（已截断）';
+                    }
+                    $('#probe').text(text);
+                },
+                error: function (xhr) {
+                    $('#probe').text('HTTP ' + xhr.status + '\n' + xhr.responseText);
+                }
+            });
+        });
+
+        $('#copyToken').on('click', function () {
+            var token = null;
+            document.cookie.split(';').forEach(function (c) {
+                var kv = c.trim().split('=');
+                if (kv[0] === 'satoken') {
+                    token = kv[1];
+                }
+            });
+            if (!token) {
+                layer.msg('当前会话未找到 satoken，请确认已登录');
+                return;
+            }
+            navigator.clipboard.writeText(token).then(function () {
+                layer.msg('token 已复制到剪贴板');
+            }, function () {
+                layer.msg(token);
+            });
+        });
+    });
+</script>
+</body>
+</html>

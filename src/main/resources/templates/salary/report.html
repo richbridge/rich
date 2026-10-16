@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>工资上报</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .amount-tip { font-size: 12px; color: #8a9099; margin-left: 6px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="search-bar">
+        <form class="layui-form" id="searchForm" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <label class="layui-form-label" style="width:60px">年度</label>
+                    <div class="layui-input-inline" style="width:100px">
+                        <select name="year" id="yearSel"><option value="">全部</option></select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <label class="layui-form-label" style="width:60px">月份</label>
+                    <div class="layui-input-inline" style="width:90px">
+                        <select name="month" id="monthSel"><option value="">全部</option></select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:140px">
+                        <select name="deptName" id="deptSel">
+                            <option value="">全部部门</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:150px">
+                        <select name="reportType">
+                            <option value="">全部上报类型</option>
+                            <option value="部门工资表上报">部门工资表上报</option>
+                            <option value="专项上报">专项上报</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status" id="statusSel">
+                            <option value="">全部状态</option>
+                            <option value="草稿">草稿</option>
+                            <option value="待审核">待审核</option>
+                            <option value="已审核">已审核</option>
+                            <option value="已驳回">已驳回</option>
+                            <option value="已发放">已发放</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:200px">
+                        <input type="text" name="keywords" placeholder="单号 / 部门 / 上报人 / 下拨单号"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="reportTable" lay-filter="reportTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="reportToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新增上报单</button>
+        <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="refresh">重算下拨结余</button>
+    </div>
+</script>
+
+<script type="text/html" id="reportRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{#  if(d.status === '草稿'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="submit">提交</a>
+    {{#  } else if(d.status === '待审核'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="audit">审核</a>
+    {{#  } else if(d.status === '已审核'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="pay">发放</a>
+    {{#  } }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="detail">工资明细</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 上报单表单 -->
+<div id="reportFormWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" id="reportForm" lay-filter="reportForm">
+        <input type="hidden" name="id">
+
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">上报单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="reportNo" lay-verify="required" placeholder="如 SB2026-09-01"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">年度</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="periodYear" lay-verify="required" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">月份</label>
+                    <div class="layui-input-block">
+                        <select name="periodMonth" id="formMonth"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">上报部门</label>
+                    <div class="layui-input-block">
+                        <select name="deptName" id="formDeptSel" lay-verify="required"
+                                lay-filter="formDept"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">上报类型</label>
+                    <div class="layui-input-block">
+                        <select name="reportType">
+                            <option value="部门工资表上报">部门工资表上报</option>
+                            <option value="专项上报">专项上报</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">关联下拨单</label>
+                    <div class="layui-input-block">
+                        <select name="allocId" id="formAllocSel">
+                            <option value="">不关联（按部门自动匹配）</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">上报人数</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="headcount" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">上报日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="reportDate" id="reportDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">上报人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="reporter" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">应发合计</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="grossAmount" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">代扣合计</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="deductAmount" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">个税合计</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="taxAmount" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实发合计</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="netAmount" step="0.01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审核人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="auditor" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审核日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="auditDate" id="auditDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="草稿">草稿</option>
+                            <option value="待审核">待审核</option>
+                            <option value="已审核">已审核</option>
+                            <option value="已驳回">已驳回</option>
+                            <option value="已发放">已发放</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">审核意见</label>
+            <div class="layui-input-block">
+                <textarea name="auditOpinion" placeholder="审核意见" class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="reportSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 审核弹窗 -->
+<div id="auditWrap" style="display:none;padding:18px">
+    <form class="layui-form" id="auditForm" lay-filter="auditForm">
+        <div class="layui-form-item">
+            <label class="layui-form-label">审核结果</label>
+            <div class="layui-input-block">
+                <input type="radio" name="passed" value="1" title="审核通过" checked>
+                <input type="radio" name="passed" value="0" title="驳回重报">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">审核人</label>
+            <div class="layui-input-block">
+                <input type="text" name="auditor" value="柳鉴益" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">审核意见</label>
+            <div class="layui-input-block">
+                <textarea name="opinion" placeholder="如：工资表与考勤、考核结果一致，准予发放"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="auditSubmit">确定</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+
+        var layerIndex = null;
+        var auditIndex = null;
+        var auditId = null;
+
+        var defaultAllocId = getQuery('allocId');
+        var defaultStatus = getQuery('status');
+
+        var thisYear = new Date().getFullYear();
+        var yearHtml = '';
+        for (var y = thisYear + 1; y >= thisYear - 3; y--) {
+            yearHtml += '<option value="' + y + '">' + y + '</option>';
+        }
+        $('#yearSel').append(yearHtml);
+        var monthHtml = '';
+        for (var m = 1; m <= 12; m++) {
+            monthHtml += '<option value="' + m + '">' + m + ' 月</option>';
+        }
+        $('#monthSel').append(monthHtml);
+        $('#formMonth').html(monthHtml);
+        if (defaultStatus) {
+            $('#statusSel').val(defaultStatus);
+        }
+        laydate.render({elem: '#reportDate'});
+        laydate.render({elem: '#auditDate'});
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            if (isNaN(n)) return v;
+            return n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // 部门与下拨单下拉
+        $.get('/api/salary/dept/all', function (res) {
+            var opts = '<option value="">请选择部门</option>';
+            if (res.code === 0) {
+                (res.data || []).forEach(function (d) {
+                    opts += '<option value="' + d.deptName + '">' + d.deptName + '</option>';
+                });
+            }
+            $('#formDeptSel').html(opts);
+            $('#deptSel').append((res.data || []).map(function (d) {
+                return '<option value="' + d.deptName + '">' + d.deptName + '</option>';
+            }).join(''));
+            form.render('select');
+        });
+        var allocList = [];
+        $.get('/api/salary/alloc/all', function (res) {
+            allocList = (res.code === 0 && res.data) ? res.data : [];
+            renderAllocSel('');
+            if (defaultAllocId) {
+                $('#formAllocSel').val(defaultAllocId);
+                form.render('select');
+            }
+        });
+
+        // 下拨单下拉：按部门 + 期间过滤，未指定时按部门自动匹配
+        function renderAllocSel(deptName) {
+            var year = Number($('#reportForm input[name=periodYear]').val() || 0);
+            var month = Number($('#reportForm select[name=periodMonth]').val() || 0);
+            var opts = '<option value="">不关联（按部门自动匹配）</option>';
+            allocList.forEach(function (a) {
+                if (deptName && a.deptName && a.deptName !== deptName) {
+                    return;
+                }
+                if (year && month && (a.periodYear !== year || a.periodMonth !== month)) {
+                    return;
+                }
+                opts += '<option value="' + a.id + '">' + a.allocNo + '（'
+                    + (a.deptName || '全公司') + ' · '
+                    + a.periodYear + '-' + (a.periodMonth < 10 ? '0' + a.periodMonth : a.periodMonth)
+                    + ' · ' + a.allocType + '）</option>';
+            });
+            $('#formAllocSel').html(opts);
+            form.render('select');
+        }
+
+        form.on('select(formDept)', function (obj) {
+            renderAllocSel(obj.value);
+        });
+        form.render();
+
+        // ---------------------------------------------------------- 列表
+        table.render({
+            elem: '#reportTable',
+            url: '/api/salary/report/list',
+            method: 'get',
+            toolbar: '#reportToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 15,
+            limits: [15, 30, 50],
+            where: {allocId: defaultAllocId || '', status: defaultStatus || ''},
+            cols: [[
+                {field: 'reportNo', title: '上报单号', width: 140, sort: true},
+                {
+                    field: 'periodMonth', title: '期间', width: 90, align: 'center',
+                    templet: function (r) {
+                        return r.periodYear + '-' + (r.periodMonth < 10 ? '0' + r.periodMonth : r.periodMonth);
+                    }
+                },
+                {field: 'deptName', title: '上报部门', width: 110},
+                {field: 'reportType', title: '上报类型', width: 130},
+                {field: 'allocNo', title: '关联下拨单', width: 120},
+                {field: 'headcount', title: '人数', width: 70, align: 'center', sort: true},
+                {field: 'grossAmount', title: '应发(元)', width: 120, align: 'right', sort: true,
+                    templet: function (r) { return money(r.grossAmount); }},
+                {field: 'deductAmount', title: '代扣(元)', width: 110, align: 'right',
+                    templet: function (r) { return money(r.deductAmount); }},
+                {field: 'taxAmount', title: '个税(元)', width: 100, align: 'right',
+                    templet: function (r) { return money(r.taxAmount); }},
+                {field: 'netAmount', title: '实发(元)', width: 120, align: 'right', sort: true,
+                    templet: function (r) {
+                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.netAmount) + '</span>';
+                    }},
+                {field: 'reportDate', title: '上报日期', width: 110, align: 'center'},
+                {field: 'reporter', title: '上报人', width: 90},
+                {field: 'auditor', title: '审核人', width: 90},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已发放' ? 'layui-bg-green'
+                            : (r.status === '已审核' ? 'layui-bg-blue'
+                                : (r.status === '待审核' ? 'layui-bg-orange'
+                                    : (r.status === '已驳回' ? 'layui-bg-red' : '')));
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 280, fixed: 'right', toolbar: '#reportRowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('reportTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('reportTable', {
+                    where: {year: '', month: '', deptName: '', reportType: '', status: '', keywords: ''},
+                    page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        table.on('toolbar(reportTable)', function (obj) {
+            if (obj.event === 'add') {
+                openForm(null);
+            } else if (obj.event === 'refresh') {
+                $.post('/api/salary/refresh-status', function () {
+                    table.reload('reportTable');
+                    layer.msg('已重算下拨单结余');
+                });
+            }
+        });
+
+        table.on('tool(reportTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'submit') {
+                $.post('/api/salary/report/submit', {id: row.id}, function (res) {
+                    layer.msg(res.code === 0 ? '已提交，等待财务科审核' : (res.msg || '提交失败'));
+                    table.reload('reportTable');
+                });
+            } else if (obj.event === 'audit') {
+                auditId = row.id;
+                auditIndex = layer.open({
+                    type: 1,
+                    title: '审核「' + row.reportNo + '」',
+                    area: ['520px', '360px'],
+                    content: $('#auditWrap')
+                });
+            } else if (obj.event === 'pay') {
+                layer.confirm('确认该上报单工资已发放？发放后将回填下拨单的已发放金额。', function (i) {
+                    layer.close(i);
+                    $.post('/api/salary/report/pay', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已标记发放' : (res.msg || '操作失败'));
+                        table.reload('reportTable');
+                    });
+                });
+            } else if (obj.event === 'detail') {
+                openTab('/salary/detail?reportId=' + row.id);
+            } else if (obj.event === 'del') {
+                layer.confirm('删除将同时删除该单下的工资明细，确认删除？', function (i) {
+                    layer.close(i);
+                    $.post('/api/salary/report/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('reportTable');
+                    });
+                });
+            }
+        });
+
+        form.on('submit(auditSubmit)', function (obj) {
+            $.post('/api/salary/report/audit', {
+                id: auditId,
+                passed: obj.field.passed,
+                auditor: obj.field.auditor,
+                opinion: obj.field.opinion
+            }, function (res) {
+                if (res.code !== 0) {
+                    layer.msg(res.msg || '审核失败');
+                    return;
+                }
+                layer.close(auditIndex);
+                layer.msg(obj.field.passed === '1' ? '审核通过' : '已驳回');
+                table.reload('reportTable');
+            });
+            return false;
+        });
+
+        // ---------------------------------------------------------- 表单
+        function openForm(row) {
+            var d = row || {};
+            form.val('reportForm', {
+                id: d.id || '',
+                reportNo: d.reportNo || '',
+                periodYear: d.periodYear || thisYear,
+                periodMonth: d.periodMonth || (new Date().getMonth() + 1),
+                deptName: d.deptName || '',
+                reportType: d.reportType === '专项上报' ? '专项上报' : '部门工资表上报',
+                allocId: d.allocId || defaultAllocId || '',
+                headcount: d.headcount || 0,
+                grossAmount: d.grossAmount === null || d.grossAmount === undefined ? '' : d.grossAmount,
+                deductAmount: d.deductAmount === null || d.deductAmount === undefined ? '' : d.deductAmount,
+                taxAmount: d.taxAmount === null || d.taxAmount === undefined ? '' : d.taxAmount,
+                netAmount: d.netAmount === null || d.netAmount === undefined ? '' : d.netAmount,
+                reportDate: d.reportDate || '',
+                reporter: d.reporter || '',
+                auditor: d.auditor || '',
+                auditDate: d.auditDate || '',
+                auditOpinion: d.auditOpinion || '',
+                status: d.status || '草稿',
+                remark: d.remark || ''
+            });
+            // 按部门 + 期间过滤下拨单后再回填关联
+            renderAllocSel(d.deptName || '');
+            if (d.allocId) {
+                $('#formAllocSel').val(String(d.allocId));
+            } else if (defaultAllocId) {
+                $('#formAllocSel').val(defaultAllocId);
+            }
+            form.render('select');
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑上报单' : '新增上报单',
+                area: ['960px', '640px'],
+                content: $('#reportFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        $('#cancelBtn').on('click', function () {
+            layer.close(layerIndex);
+        });
+
+        form.on('submit(reportSubmit)', function (obj) {
+            var f = obj.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                reportNo: f.reportNo,
+                periodYear: f.periodYear ? Number(f.periodYear) : null,
+                periodMonth: f.periodMonth ? Number(f.periodMonth) : null,
+                deptName: f.deptName,
+                allocId: f.allocId ? Number(f.allocId) : null,
+                reportType: f.reportType,
+                headcount: f.headcount === '' ? 0 : Number(f.headcount),
+                grossAmount: f.grossAmount === '' ? 0 : Number(f.grossAmount),
+                deductAmount: f.deductAmount === '' ? 0 : Number(f.deductAmount),
+                taxAmount: f.taxAmount === '' ? 0 : Number(f.taxAmount),
+                netAmount: f.netAmount === '' ? 0 : Number(f.netAmount),
+                reportDate: f.reportDate || null,
+                reporter: f.reporter,
+                auditor: f.auditor,
+                auditDate: f.auditDate || null,
+                auditOpinion: f.auditOpinion,
+                status: f.status,
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/salary/report/save',
+                type: 'post',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code !== 0) {
+                        layer.msg(res.msg || '保存失败');
+                        return;
+                    }
+                    layer.close(layerIndex);
+                    layer.msg('已保存');
+                    table.reload('reportTable');
+                }
+            });
+            return false;
+        });
+
+        function openTab(url) {
+            if (window.parent && window.parent.layui && window.parent.layui.index) {
+                window.parent.layui.index.openTabsPage(url, '');
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        function getQuery(name) {
+            var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+    });
+</script>
+</body>
+</html>

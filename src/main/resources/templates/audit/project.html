@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>审计项目管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:220px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称 / 组长 / 单位"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="auditYear" id="yearSel">
+                        <option value="">全部年度</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:150px;margin-bottom:0">
+                    <select name="auditType">
+                        <option value="">全部类型</option>
+                        <option value="财务审计">财务审计</option>
+                        <option value="固定资产审计">固定资产审计</option>
+                        <option value="内部控制审计">内部控制审计</option>
+                        <option value="预算执行审计">预算执行审计</option>
+                        <option value="专项审计">专项审计</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="未开始">未开始</option>
+                        <option value="整改中">整改中</option>
+                        <option value="已完成">已完成</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:150px;margin-bottom:0">
+                    <select name="archived">
+                        <option value="0">未归档</option>
+                        <option value="1">已归档</option>
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">查询</button>
+                <button type="reset" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="projectTable" lay-filter="projectTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="projectToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增项目
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="projectRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="issues">问题</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="archive">归档</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="projectFormWrap" style="display: none;">
+    <form class="layui-form" id="projectForm" lay-filter="projectForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">项目编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="projectNo" placeholder="如 SJ2026-001" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审计年度</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="auditYear" placeholder="如 2026" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">项目名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" placeholder="如 2026年度财务收支审计"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审计类型</label>
+                    <div class="layui-input-block">
+                        <select name="auditType">
+                            <option value="财务审计">财务审计</option>
+                            <option value="固定资产审计">固定资产审计</option>
+                            <option value="内部控制审计">内部控制审计</option>
+                            <option value="预算执行审计">预算执行审计</option>
+                            <option value="专项审计">专项审计</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">被审计单位</label>
+                    <div class="layui-input-block">
+                        <select name="unitId" id="unitSel"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">进点日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="auditDate" id="auditDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结束日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="endDate" id="endDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审计组长</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="leader" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审计工作组</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="workgroup" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">项目状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="未开始">未开始</option>
+                            <option value="整改中">整改中</option>
+                            <option value="已完成">已完成</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">是否归档</label>
+                    <div class="layui-input-block">
+                        <select name="archived">
+                            <option value="0">未归档</option>
+                            <option value="1">已归档</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <textarea name="remark" placeholder="选填" class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="projectSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="projectCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+        var layerIndex = null;
+
+        laydate.render({elem: '#auditDate', type: 'date'});
+        laydate.render({elem: '#endDate', type: 'date'});
+
+        // 年度下拉：从当前往前 6 年
+        var y = new Date().getFullYear();
+        var yearHtml = '<option value="">全部年度</option>';
+        for (var i = 0; i < 7; i++) {
+            yearHtml += '<option value="' + (y - i) + '">' + (y - i) + '年</option>';
+        }
+        $('#yearSel').html(yearHtml);
+
+        // 单位下拉
+        $.get('/api/audit/unit/all', function (res) {
+            var html = '<option value="">请选择</option>';
+            (res.data || []).forEach(function (u) {
+                html += '<option value="' + u.id + '">' + esc(u.name) + '</option>';
+            });
+            $('#unitSel').html(html);
+            form.render('select');
+        });
+        form.render();
+
+        table.render({
+            elem: '#projectTable',
+            url: '/api/audit/project/list',
+            method: 'get',
+            where: {archived: 0},
+            toolbar: '#projectToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'projectNo', title: '项目编号', width: 120, sort: true},
+                {field: 'name', title: '项目名称', minWidth: 220},
+                {field: 'auditYear', title: '年度', width: 80, align: 'center'},
+                {field: 'auditType', title: '审计类型', width: 130},
+                {field: 'unitName', title: '被审计单位', width: 120},
+                {field: 'auditDate', title: '进点日期', width: 110, align: 'center'},
+                {field: 'leader', title: '审计组长', width: 100},
+                {field: 'workgroup', title: '审计工作组', width: 130},
+                {field: 'issueCount', title: '问题', width: 70, align: 'center'},
+                {field: 'closedCount', title: '已销号', width: 80, align: 'center'},
+                {field: 'overdueCount', title: '逾期', width: 70, align: 'center',
+                    templet: function (r) {
+                        return r.overdueCount > 0
+                            ? '<span style="color:#e13c3c;font-weight:600">' + r.overdueCount + '</span>'
+                            : '0';
+                    }},
+                {field: 'amount', title: '问题金额(元)', width: 120, align: 'right',
+                    templet: function (r) { return num(r.amount, 2); }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已完成' ? 'layui-bg-green'
+                            : (r.status === '整改中' ? 'layui-bg-blue' : '');
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {
+                    field: 'archived', title: '归档', width: 80, align: 'center',
+                    templet: function (r) {
+                        return r.archived === 1
+                            ? '<span class="layui-badge layui-bg-gray">已归档</span>' : '';
+                    }
+                },
+                {title: '操作', width: 230, fixed: 'right', toolbar: '#projectRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('projectTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('projectTable', {
+                    where: {keywords: '', auditYear: '', auditType: '', status: '', archived: 0},
+                    page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        table.on('toolbar(projectTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(projectTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'issues') {
+                openTab('/audit/issue?projectId=' + row.id);
+            } else if (obj.event === 'archive') {
+                var next = row.archived === 1 ? 0 : 1;
+                $.post('/api/audit/project/archive', {id: row.id, archived: next}, function (res) {
+                    if (res.code === 0) {
+                        layer.msg(next === 1 ? '已归档' : '已取消归档', {icon: 1});
+                        table.reload('projectTable');
+                    } else {
+                        layer.msg(res.msg || '操作失败');
+                    }
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除项目「' + esc(row.name) + '」吗？<br>其下的审计问题也会一并删除。',
+                    {icon: 3, title: '提示'}, function (i) {
+                        layer.close(i);
+                        $.post('/api/audit/project/delete', {id: row.id}, function (res) {
+                            if (res.code === 0) {
+                                layer.msg('删除成功', {icon: 1});
+                                table.reload('projectTable');
+                            } else {
+                                layer.msg(res.msg || '删除失败');
+                            }
+                        });
+                    });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('projectForm', {
+                id: d.id || '',
+                projectNo: d.projectNo || '',
+                name: d.name || '',
+                auditYear: d.auditYear || new Date().getFullYear(),
+                auditType: d.auditType || '财务审计',
+                unitId: d.unitId || '',
+                auditDate: d.auditDate || '',
+                endDate: d.endDate || '',
+                leader: d.leader || '',
+                workgroup: d.workgroup || '',
+                status: d.status || '整改中',
+                archived: d.archived === 1 ? 1 : 0,
+                remark: d.remark || ''
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑审计项目' : '新增审计项目',
+                area: ['860px', '600px'],
+                content: $('#projectFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        form.on('submit(projectSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                projectNo: f.projectNo,
+                name: f.name,
+                auditYear: f.auditYear ? Number(f.auditYear) : null,
+                auditType: f.auditType,
+                unitId: f.unitId ? Number(f.unitId) : null,
+                auditDate: f.auditDate || null,
+                endDate: f.endDate || null,
+                leader: f.leader,
+                workgroup: f.workgroup,
+                status: f.status,
+                archived: Number(f.archived),
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/audit/project/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('projectTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#projectCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+
+        /** 在 layuiAdmin 主框架里打开新标签页。 */
+        function openTab(href) {
+            try {
+                var admin = parent.layui && parent.layui.admin;
+                if (admin && admin.events && admin.events.openTab) {
+                    admin.events.openTab({href: href});
+                    return;
+                }
+                if (admin && admin.openTab) {
+                    admin.openTab({href: href});
+                    return;
+                }
+            } catch (e) {
+                // 非框架环境直接跳转
+            }
+            location.href = href;
+        }
+
+        function num(v, n) {
+            if (v === null || v === undefined || v === '') return '';
+            var x = Number(v);
+            return isNaN(x) ? '' : x.toFixed(n);
+        }
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>食材物料档案</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:200px">
+                        <input type="text" name="keywords" placeholder="物料名称 / 编码 / 规格"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:150px">
+                        <select name="category">
+                            <option value="">全部分类</option>
+                            <option value="粮油米面">粮油米面</option>
+                            <option value="蔬菜豆制品">蔬菜豆制品</option>
+                            <option value="肉禽蛋">肉禽蛋</option>
+                            <option value="水产海鲜">水产海鲜</option>
+                            <option value="调料饮品">调料饮品</option>
+                            <option value="燃料">燃料</option>
+                            <option value="低值易耗">低值易耗</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="启用">启用</option>
+                            <option value="停用">停用</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="materialTable" lay-filter="materialTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="listToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新增物料</button>
+    </div>
+</script>
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="card">收发存</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="formWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="editForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">物料编码</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="materialCode" lay-verify="required" placeholder="如 SC-01"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">物料名称</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="materialName" lay-verify="required" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">分类</label>
+                    <div class="layui-input-block">
+                        <select name="category">
+                            <option value="粮油米面">粮油米面</option>
+                            <option value="蔬菜豆制品">蔬菜豆制品</option>
+                            <option value="肉禽蛋">肉禽蛋</option>
+                            <option value="水产海鲜">水产海鲜</option>
+                            <option value="调料饮品">调料饮品</option>
+                            <option value="燃料">燃料</option>
+                            <option value="低值易耗">低值易耗</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">规格</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="spec" placeholder="如 25kg/袋" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计量单位</label>
+                    <div class="layui-input-block">
+                        <select name="unit">
+                            <option value="斤">斤</option>
+                            <option value="kg">kg</option>
+                            <option value="箱">箱</option>
+                            <option value="桶">桶</option>
+                            <option value="袋">袋</option>
+                            <option value="件">件</option>
+                            <option value="个">个</option>
+                            <option value="瓶">瓶</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">参考单价</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="unitPrice" step="0.0001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">安全库存</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="minStock" step="0.001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">最高库存</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="maxStock" step="0.001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">保质天数</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="shelfDays" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">默认供应商</label>
+                    <div class="layui-input-block">
+                        <select name="supplierId" id="supplierSel"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="启用">启用</option>
+                            <option value="停用">停用</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 收发存卡片 -->
+<div id="cardWrap" style="display:none;padding:14px">
+    <table class="layui-hide" id="stockInfoTable"></table>
+    <div style="height:10px"></div>
+    <table class="layui-hide" id="flowTable"></table>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var idx = null;
+        form.render();
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? v : n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function price(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? v : n.toFixed(2);
+        }
+
+        $.get('/api/canteen/supplier/all', function (res) {
+            var html = '<option value="">未指定</option>';
+            if (res.code === 0) {
+                (res.data || []).forEach(function (s) {
+                    html += '<option value="' + s.id + '">' + s.supplierName + '</option>';
+                });
+            }
+            $('#supplierSel').html(html);
+            form.render('select');
+        });
+
+        table.render({
+            elem: '#materialTable', url: '/api/canteen/material/list', method: 'get',
+            toolbar: '#listToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50, 100],
+            cols: [[
+                {field: 'materialCode', title: '编码', width: 90, sort: true},
+                {field: 'materialName', title: '物料名称', minWidth: 150},
+                {field: 'category', title: '分类', width: 110, align: 'center'},
+                {field: 'spec', title: '规格', width: 100},
+                {field: 'unit', title: '单位', width: 70, align: 'center'},
+                {field: 'unitPrice', title: '参考单价(元)', width: 110, align: 'right', sort: true,
+                    templet: function (r) { return price(r.unitPrice); }},
+                {field: 'minStock', title: '安全库存', width: 100, align: 'right'},
+                {field: 'maxStock', title: '最高库存', width: 100, align: 'right'},
+                {field: 'shelfDays', title: '保质期(天)', width: 100, align: 'center'},
+                {field: 'supplierName', title: '默认供应商', minWidth: 150},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        return r.status === '启用'
+                                ? '<span class="layui-badge layui-bg-green">启用</span>'
+                                : '<span class="layui-badge">停用</span>';
+                    }},
+                {title: '操作', width: 190, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('materialTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('materialTable', {where: {keywords: '', category: '', status: ''}, page: {curr: 1}});
+            }, 10);
+        });
+
+        table.on('toolbar(materialTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+        table.on('tool(materialTable)', function (obj) {
+            if (obj.event === 'edit') openForm(obj.data);
+            else if (obj.event === 'card') openCard(obj.data);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除物料「' + obj.data.materialName + '」？', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/material/delete', {id: obj.data.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('materialTable');
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('editForm', {
+                id: d.id || '', materialCode: d.materialCode || '', materialName: d.materialName || '',
+                category: d.category || '粮油米面', spec: d.spec || '', unit: d.unit || '斤',
+                unitPrice: d.unitPrice === null || d.unitPrice === undefined ? '' : d.unitPrice,
+                minStock: d.minStock === null || d.minStock === undefined ? '' : d.minStock,
+                maxStock: d.maxStock === null || d.maxStock === undefined ? '' : d.maxStock,
+                shelfDays: d.shelfDays || '', supplierId: d.supplierId || '',
+                status: d.status || '启用', remark: d.remark || ''
+            });
+            idx = layer.open({
+                type: 1, title: row ? '编辑物料' : '新增物料',
+                area: ['780px', '520px'], content: $('#formWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#cancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.supplierId = f.supplierId ? Number(f.supplierId) : null;
+            f.unitPrice = f.unitPrice === '' ? 0 : Number(f.unitPrice);
+            f.minStock = f.minStock === '' ? 0 : Number(f.minStock);
+            f.maxStock = f.maxStock === '' ? 0 : Number(f.maxStock);
+            f.shelfDays = f.shelfDays === '' ? null : Number(f.shelfDays);
+            $.ajax({
+                url: '/api/canteen/material/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(f),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('materialTable');
+                }
+            });
+            return false;
+        });
+
+        function openCard(row) {
+            $.get('/api/canteen/material/card', {materialId: row.id}, function (res) {
+                if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
+                var d = res.data || {};
+                table.render({
+                    elem: '#stockInfoTable', data: d.stock || [], page: false,
+                    cols: [[
+                        {field: 'material_name', title: '当前结存数量', width: 150, align: 'right'},
+                        {field: 'avg_price', title: '加权单价(元)', width: 130, align: 'right',
+                            templet: function (r) { return price(r.avg_price); }},
+                        {field: 'total_amount', title: '结存金额(元)', width: 140, align: 'right',
+                            templet: function (r) { return money(r.total_amount); }},
+                        {field: 'last_in_date', title: '最近入库', width: 120, align: 'center'},
+                        {field: 'last_out_date', title: '最近出库', width: 120, align: 'center'}
+                    ]]
+                });
+                table.render({
+                    elem: '#flowTable', data: d.flows || [], page: false, height: 300,
+                    cols: [[
+                        {field: 'biz_date', title: '业务日期', width: 110, align: 'center', sort: true},
+                        {field: 'flow_type', title: '类型', width: 100, align: 'center'},
+                        {field: 'biz_no', title: '单据编号', width: 130},
+                        {field: 'quantity', title: '数量', width: 100, align: 'right'},
+                        {field: 'unit_price', title: '单价(元)', width: 110, align: 'right',
+                            templet: function (r) { return price(r.unit_price); }},
+                        {field: 'amount', title: '金额(元)', width: 130, align: 'right',
+                            templet: function (r) { return money(r.amount); }},
+                        {field: 'counterparty', title: '对方', minWidth: 150}
+                    ]]
+                });
+                idx = layer.open({
+                    type: 1, title: '收发存明细 — ' + row.materialName, area: ['860px', '520px'],
+                    content: $('#cardWrap'), end: function () { idx = null; }
+                });
+            });
+        }
+    });
+</script>
+</body>
+</html>

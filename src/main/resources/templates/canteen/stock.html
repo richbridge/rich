@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>库存与盘点</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .sum-bar { margin-top: 8px; text-align: right; font-size: 13px; color: #4a5360; }
+        .sum-bar b { color: #e13c3c; font-size: 15px; margin: 0 4px; }
+        /* 页签内容区高度恒定：切换页签时页面总高不变，不会来回抖动 */
+        .layui-tab-card > .layui-tab-content { padding: 10px; min-height: 560px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="layui-tab layui-tab-card" lay-filter="mainTab">
+        <ul class="layui-tab-title">
+            <li class="layui-this">库存结存</li>
+            <li>库存盘点</li>
+            <li>库存预警</li>
+        </ul>
+        <div class="layui-tab-content">
+
+            <!-- 库存结存 -->
+            <div class="layui-tab-item layui-show">
+                <div class="search-bar">
+                    <form class="layui-form" lay-filter="stockSearch">
+                        <div class="layui-form-item">
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:190px">
+                                    <input type="text" name="keywords" placeholder="物料名称 / 编码"
+                                           autocomplete="off" class="layui-input">
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:140px">
+                                    <select name="category">
+                                        <option value="">全部分类</option>
+                                        <option value="粮油米面">粮油米面</option>
+                                        <option value="蔬菜豆制品">蔬菜豆制品</option>
+                                        <option value="肉禽蛋">肉禽蛋</option>
+                                        <option value="水产海鲜">水产海鲜</option>
+                                        <option value="调料饮品">调料饮品</option>
+                                        <option value="燃料">燃料</option>
+                                        <option value="低值易耗">低值易耗</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:140px">
+                                    <select name="warnLevel">
+                                        <option value="">全部结存状态</option>
+                                        <option value="低于安全库存">低于安全库存</option>
+                                        <option value="超出最高库存">超出最高库存</option>
+                                        <option value="负库存">负库存</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="stockSearchBtn">查询</button>
+                                <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="stockReset">重置</button>
+                                <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" id="recalcBtn">
+                                    重算库存
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <table class="layui-hide" id="stockTable"></table>
+            </div>
+
+            <!-- 盘点 -->
+            <div class="layui-tab-item">
+                <div class="search-bar">
+                    <form class="layui-form" lay-filter="checkSearch">
+                        <div class="layui-form-item">
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:140px">
+                                    <select name="status">
+                                        <option value="">全部状态</option>
+                                        <option value="草稿">草稿</option>
+                                        <option value="已盘点">已盘点</option>
+                                        <option value="已处理">已处理</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="checkSearchBtn">查询</button>
+                                <button type="button" class="layui-btn layui-btn-sm" id="addCheckBtn">新增盘点单</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <table class="layui-hide" id="checkTable" lay-filter="checkTable"></table>
+            </div>
+
+            <!-- 预警 -->
+            <div class="layui-tab-item">
+                <table class="layui-hide" id="warnTable"></table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="checkRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">查看</a>
+    {{# if(d.status === '草稿' || d.status === '已盘点'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="post">处理</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 盘点表单 -->
+<div id="checkFormWrap" style="display:none;padding:14px 16px 0">
+    <form class="layui-form" lay-filter="checkForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checkNo" id="checkNo" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checkDate" id="checkDate" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点方式</label>
+                    <div class="layui-input-block">
+                        <select name="checkType">
+                            <option value="月末盘点">月末盘点</option>
+                            <option value="季度盘点">季度盘点</option>
+                            <option value="临时抽盘">临时抽盘</option>
+                            <option value="年度清查">年度清查</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="草稿">草稿</option>
+                            <option value="已盘点">已盘点</option>
+                            <option value="已处理">已处理</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checker" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">复核人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="reviewer" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="layui-hide" id="checkItemTable"></table>
+
+        <div class="sum-bar">
+            账面金额 <b id="bookAmount">0.00</b> 元 · 实盘金额 <b id="actualAmount">0.00</b> 元 ·
+            差异 <b id="diffAmount">0.00</b> 元 · 差异条数 <b id="diffCount">0</b>
+        </div>
+
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="checkSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="checkCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate', 'element'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate, element = layui.element;
+        var idx = null, items = [];
+
+        /** 表格固定高度：高度恒定，页面不会因数据行数变化而抖动。 */
+        var TABLE_HEIGHT = 480;
+
+        /** 隐藏容器里的表格宽度会算成 0，故切到哪个页签才初始化哪个。 */
+        var inited = {check: false, warn: false};
+
+        form.render();
+        laydate.render({elem: '#checkDate', value: new Date()});
+
+        function money(v) {
+            return Number(v || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+        function qty(v) { return Number(v || 0).toFixed(3); }
+        function px(v) { return Number(v || 0).toFixed(4); }
+
+        function warnTag(row) {
+            var min = Number(row.minStock || 0), max = Number(row.maxStock || 0), q = Number(row.quantity || 0);
+            if (q < 0) return '<span class="layui-badge layui-bg-red">负库存</span>';
+            if (min > 0 && q < min) return '<span class="layui-badge layui-bg-orange">低于安全库存</span>';
+            if (max > 0 && q > max) return '<span class="layui-badge">超储</span>';
+            return '<span class="layui-badge layui-bg-green">正常</span>';
+        }
+
+        // ---------------------------------------------------------- 库存结存
+        table.render({
+            elem: '#stockTable', url: '/api/canteen/stock/list', method: 'get',
+            defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50, 100], height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'materialCode', title: '编码', width: 90},
+                {field: 'materialName', title: '物料名称', minWidth: 140},
+                {field: 'category', title: '分类', width: 110, align: 'center'},
+                {field: 'spec', title: '规格', width: 90},
+                {field: 'unit', title: '单位', width: 70, align: 'center'},
+                {field: 'quantity', title: '结存数量', width: 110, align: 'right', sort: true,
+                    templet: function (r) {
+                        var c = Number(r.quantity || 0) < 0 ? '#e13c3c' : '#1f2329';
+                        return '<span style="color:' + c + ';font-weight:600">' + qty(r.quantity) + '</span>';
+                    }},
+                {field: 'avgPrice', title: '加权单价(元)', width: 120, align: 'right',
+                    templet: function (r) { return px(r.avgPrice); }},
+                {field: 'totalAmount', title: '结存金额(元)', width: 130, align: 'right', sort: true,
+                    templet: function (r) { return money(r.totalAmount); }},
+                {field: 'minStock', title: '安全库存', width: 100, align: 'right',
+                    templet: function (r) { return qty(r.minStock); }},
+                {field: 'maxStock', title: '最高库存', width: 100, align: 'right',
+                    templet: function (r) { return qty(r.maxStock); }},
+                {title: '状态', width: 120, align: 'center', templet: warnTag},
+                {field: 'lastInDate', title: '最近入库', width: 110, align: 'center'},
+                {field: 'lastOutDate', title: '最近出库', width: 110, align: 'center'}
+            ]]
+        });
+
+        form.on('submit(stockSearchBtn)', function (obj) {
+            table.reload('stockTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#stockReset').on('click', function () {
+            setTimeout(function () {
+                table.reload('stockTable', {where: {keywords: '', category: '', warnLevel: ''}, page: {curr: 1}});
+            }, 10);
+        });
+        $('#recalcBtn').on('click', function () {
+            layer.confirm('将按全部已入库 / 已出库 / 已处理盘点的单据重算库存结存，确认继续？', function (i) {
+                layer.close(i);
+                $.post('/api/canteen/stock/recalc', function (res) {
+                    layer.msg(res.code === 0 ? '已重算，共 ' + res.data + ' 条结存' : (res.msg || '失败'));
+                    table.reload('stockTable');
+                });
+            });
+        });
+
+        // ---------------------------------------------------------- 预警
+        function renderWarnTable() {
+            if (inited.warn) { return; }
+            inited.warn = true;
+            table.render({
+            elem: '#warnTable', url: '/api/canteen/stock/warnings', method: 'get', page: false,
+            height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'material_name', title: '物料名称', minWidth: 150},
+                {field: 'category', title: '分类', width: 110, align: 'center'},
+                {field: 'quantity', title: '结存数量', width: 110, align: 'right',
+                    templet: function (r) { return qty(r.quantity); }},
+                {field: 'unit', title: '单位', width: 70, align: 'center'},
+                {field: 'min_stock', title: '安全库存', width: 100, align: 'right',
+                    templet: function (r) { return qty(r.min_stock); }},
+                {field: 'max_stock', title: '最高库存', width: 100, align: 'right',
+                    templet: function (r) { return qty(r.max_stock); }},
+                {field: 'warn_level', title: '预警类型', width: 130, align: 'center',
+                    templet: function (r) {
+                        var c = r.warn_level === '负库存' ? 'layui-bg-red'
+                                : (r.warn_level === '低于安全库存' ? 'layui-bg-orange' : '');
+                        return '<span class="layui-badge ' + c + '">' + r.warn_level + '</span>';
+                    }}
+            ]]
+            });
+        }
+
+        // ---------------------------------------------------------- 盘点单
+        function renderCheckTable() {
+            if (inited.check) { return; }
+            inited.check = true;
+            table.render({
+            elem: '#checkTable', url: '/api/canteen/check/list', method: 'get',
+            defaultToolbar: ['filter', 'exports'], page: true, limit: 20, limits: [20, 50],
+            height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'checkNo', title: '盘点单号', width: 130, sort: true},
+                {field: 'checkDate', title: '盘点日期', width: 110, align: 'center', sort: true},
+                {field: 'checkType', title: '盘点方式', width: 100, align: 'center'},
+                {field: 'itemCount', title: '明细', width: 70, align: 'center'},
+                {field: 'diffCount', title: '差异条数', width: 100, align: 'center'},
+                {field: 'bookAmount', title: '账面金额(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.bookAmount); }},
+                {field: 'actualAmount', title: '实盘金额(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.actualAmount); }},
+                {field: 'diffAmount', title: '差异金额(元)', minWidth: 130, align: 'right',
+                    templet: function (r) {
+                        var c = Number(r.diffAmount || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + ';font-weight:600">' + money(r.diffAmount) + '</span>';
+                    }},
+                {field: 'checker', title: '盘点人', width: 90},
+                {field: 'status', title: '状态', width: 100, align: 'center',
+                    templet: function (r) {
+                        var c = r.status === '已处理' ? 'layui-bg-green' : (r.status === '已盘点' ? 'layui-bg-blue' : '');
+                        return '<span class="layui-badge ' + c + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 200, fixed: 'right', toolbar: '#checkRowBar'}
+            ]]
+            });
+        }
+
+        form.on('submit(checkSearchBtn)', function (obj) {
+            renderCheckTable();
+            table.reload('checkTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+
+        $('#addCheckBtn').on('click', function () { renderCheckTable(); openCheck(null); });
+
+        table.on('tool(checkTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'detail') {
+                $.get('/api/canteen/check/detail', {id: row.id}, function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
+                    openCheck(res.data.bill, res.data.items);
+                });
+            } else if (obj.event === 'post') {
+                layer.confirm('确认处理盘点单「' + row.checkNo + '」？将按差异调整库存结存并登记盘盈盘亏。',
+                    function (i) {
+                        layer.close(i);
+                        $.post('/api/canteen/check/post', {id: row.id}, function (res) {
+                            layer.msg(res.code === 0 ? res.data : (res.msg || '操作失败'));
+                            table.reload('checkTable');
+                        });
+                    });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除盘点单「' + row.checkNo + '」？', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/check/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('checkTable');
+                    });
+                });
+            }
+        });
+
+        // ---------------------------------------------------------- 盘点明细
+        var checkItemIns = table.render({
+            elem: '#checkItemTable', data: [], page: false, limit: 500,
+            cols: [[
+                {field: 'materialName', title: '物料名称', minWidth: 130},
+                {field: 'unit', title: '单位', width: 70, align: 'center'},
+                {field: 'bookQty', title: '账面数量', width: 100, align: 'right',
+                    templet: function (r) { return qty(r.bookQty); }},
+                {field: 'actualQty', title: '实盘数量', width: 110, align: 'right',
+                    templet: function (r) {
+                        return '<input class="layui-input i-actual" data-i="' + r.rowIndex
+                                + '" value="' + r.actualQty + '" style="height:26px;text-align:right">';
+                    }},
+                {field: 'diffQty', title: '差异', width: 100, align: 'right',
+                    templet: function (r) {
+                        var c = Number(r.diffQty || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + '">' + qty(r.diffQty) + '</span>';
+                    }},
+                {field: 'unitPrice', title: '单价(元)', width: 100, align: 'right',
+                    templet: function (r) { return px(r.unitPrice); }},
+                {field: 'diffAmount', title: '差异金额(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.diffAmount); }},
+                {field: 'reason', title: '差异原因', width: 140,
+                    templet: function (r) {
+                        return '<input class="layui-input i-reason" data-i="' + r.rowIndex
+                                + '" value="' + (r.reason || '') + '" style="height:26px">';
+                    }}
+            ]],
+            done: function () { calcCheck(); }
+        });
+
+        function calcCheck() {
+            var book = 0, actual = 0, diffCount = 0;
+            items.forEach(function (it) {
+                it.diffQty = Number((Number(it.actualQty) - Number(it.bookQty)).toFixed(3));
+                it.diffAmount = Number((it.diffQty * Number(it.unitPrice)).toFixed(2));
+                book += Number(it.bookQty) * Number(it.unitPrice);
+                actual += Number(it.actualQty) * Number(it.unitPrice);
+                if (Math.abs(it.diffQty) > 0.000001) diffCount++;
+            });
+            $('#bookAmount').text(money(book));
+            $('#actualAmount').text(money(actual));
+            $('#diffAmount').text(money(actual - book));
+            $('#diffCount').text(diffCount);
+        }
+
+        function reloadCheckItems() {
+            items.forEach(function (it, k) { it.rowIndex = k; });
+            checkItemIns.reload({data: items});
+        }
+
+        $(document).on('change', '.i-actual', function () {
+            items[Number($(this).data('i'))].actualQty = Number($(this).val() || 0);
+            reloadCheckItems();
+        });
+        $(document).on('change', '.i-reason', function () {
+            items[Number($(this).data('i'))].reason = $(this).val();
+        });
+
+        function openCheck(bill, billItems) {
+            if (billItems) {
+                items = billItems.map(function (it) { return $.extend({}, it); });
+            } else {
+                $.ajax({
+                    url: '/api/canteen/check/init-items', async: false,
+                    success: function (res) {
+                        items = (res.code === 0 && res.data) ? res.data : [];
+                    }
+                });
+            }
+            var d = bill || {};
+            if (!d.id) {
+                $.ajax({
+                    url: '/api/canteen/check/next-no', async: false,
+                    success: function (res) { $('#checkNo').val(res.code === 0 ? res.data : ''); }
+                });
+                $('#checkDate').val(new Date().toISOString().slice(0, 10));
+            }
+            form.val('checkForm', {
+                id: d.id || '', checkNo: d.checkNo || $('#checkNo').val(),
+                checkType: d.checkType || '月末盘点', status: d.status || '草稿',
+                checker: d.checker || '', reviewer: d.reviewer || '', remark: d.remark || ''
+            });
+            if (d.checkDate) $('#checkDate').val(d.checkDate);
+            reloadCheckItems();
+            idx = layer.open({
+                type: 1, title: bill && bill.id ? '盘点单 ' + bill.checkNo : '新增盘点单',
+                area: ['1060px', '620px'], content: $('#checkFormWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#checkCancel').on('click', function () { layer.close(idx); });
+
+        form.on('submit(checkSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            var payload = items.map(function (it) {
+                return {
+                    id: it.id || null, materialId: it.materialId, materialCode: it.materialCode,
+                    materialName: it.materialName, category: it.category, spec: it.spec, unit: it.unit,
+                    bookQty: Number(it.bookQty || 0), actualQty: Number(it.actualQty || 0),
+                    unitPrice: Number(it.unitPrice || 0), reason: it.reason || ''
+                };
+            });
+            $.ajax({
+                url: '/api/canteen/check/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify({bill: f, items: payload}),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('checkTable');
+                }
+            });
+            return false;
+        });
+
+        // 切到哪个页签才初始化哪个表格，初始化后 resize 校正列宽
+        element.on('tab(mainTab)', function (data) {
+            if (data.index === 1) { renderCheckTable(); }
+            else if (data.index === 2) { renderWarnTable(); }
+            setTimeout(function () {
+                ['stockTable', 'checkTable', 'warnTable'].forEach(function (id) {
+                    if ($('#' + id).next('.layui-table-view').length) { table.resize(id); }
+                });
+            }, 60);
+        });
+    });
+</script>
+</body>
+</html>

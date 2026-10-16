@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>招金有色综合数智系统</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" type="image/x-icon" th:href="@{/admin/style/imgs/logo.png}"/>
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+</head>
+<body class="layui-layout-body" id="LAY_home_iframe">
+<div id="LAY_app" style="visibility: hidden">
+    <div class="layui-layout layui-layout-admin">
+        <!-- 头部区域 -->
+        <div class="layui-header">
+            <ul class="layui-nav layui-layout-left">
+                <li class="layui-nav-item layadmin-flexible" lay-unselect>
+                    <a href="javascript:" layadmin-event="flexible" title="侧边伸缩">
+                        <i class="layui-icon layui-icon-shrink-right" id="LAY_app_flexible"></i>
+                    </a>
+                </li>
+                <li class="layui-nav-item" lay-unselect>
+                    <a href="javascript:" layadmin-event="refresh" title="刷新">
+                        <i class="layui-icon layui-icon-refresh-3"></i>
+                    </a>
+                </li>
+            </ul>
+            <ul class="layui-nav layui-layout-right" lay-filter="layadmin-layout-right">
+                <li class="layui-nav-item layui-hide-xs" lay-unselect>
+                    <a href="javascript:" layadmin-event="theme" title="主题设置">
+                        <i class="layui-icon layui-icon-theme"></i>
+                    </a>
+                </li>
+                <li class="layui-nav-item layui-hide-xs" lay-unselect>
+                    <a href="javascript:" layadmin-event="fullscreen" title="全屏">
+                        <i class="layui-icon layui-icon-screen-full"></i>
+                    </a>
+                </li>
+                <li class="layui-nav-item" lay-unselect>
+                    <a href="javascript:">
+                        <img class="layui-nav-img" th:src="@{/admin/style/imgs/template/portrait.png}" alt="">
+                        <cite th:text="${nickname}">管理员</cite>
+                    </a>
+                    <dl class="layui-nav-child">
+                        <dd layadmin-event="logout" style="text-align: center;"><a>退出登录</a></dd>
+                    </dl>
+                </li>
+                <li class="layui-nav-item layui-hide-xs" lay-unselect>
+                    <a href="javascript:" layadmin-event="about" title="关于">
+                        <i class="layui-icon layui-icon-more-vertical"></i>
+                    </a>
+                </li>
+                <li class="layui-nav-item layui-show-xs-inline-block layui-hide-sm" lay-unselect>
+                    <a href="javascript:" layadmin-event="more">
+                        <i class="layui-icon layui-icon-more-vertical"></i>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 侧边菜单 -->
+        <div class="layui-side layui-side-menu">
+            <div class="layui-side-scroll">
+                <div class="layui-logo" lay-href="/home">
+                <span>招金有色</span>
+                </div>
+                <!-- 菜单由后端按当前用户的权限集合裁剪后下发 -->
+                <ul class="layui-nav layui-nav-tree" lay-accordion id="LAY-system-side-menu"
+                    lay-filter="layadmin-system-side-menu">
+                    <li th:each="m, mi : ${menus}" th:attr="data-name=${m.code}"
+                        class="layui-nav-item" th:classappend="${mi.first} ? 'layui-nav-itemed'">
+                        <a href="javascript:" lay-direction="2" th:attr="lay-tips=${m.name}">
+                            <i class="layui-icon" th:classappend="${m.icon}"></i>
+                            <cite th:text="${m.name}">模块</cite>
+                        </a>
+                        <dl class="layui-nav-child">
+                            <dd th:each="c, ci : ${m.children}" th:attr="data-name=${c.code}"
+                                th:classappend="${mi.first and ci.first} ? 'layui-this'">
+                                <a th:attr="lay-href=${c.path}">
+                                    <i class="layui-icon" th:classappend="${c.icon}"></i>
+                                    <cite th:text="${c.name}">页面</cite>
+                                </a>
+                            </dd>
+                        </dl>
+                    </li>
+                    <li class="layui-nav-item" th:if="${#lists.isEmpty(menus)}">
+                        <a href="javascript:" lay-href="/403">
+                            <i class="layui-icon layui-icon-close"></i><cite>暂无可用权限</cite>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 页面标签 -->
+        <div class="layadmin-pagetabs" id="LAY_app_tabs">
+            <div class="layui-icon layadmin-tabs-control layui-icon-prev" layadmin-event="leftPage"></div>
+            <div class="layui-icon layadmin-tabs-control layui-icon-next" layadmin-event="rightPage"></div>
+            <div class="layui-icon layadmin-tabs-control layui-icon-down">
+                <ul class="layui-nav layadmin-tabs-select" lay-filter="layadmin-pagetabs-nav">
+                    <li class="layui-nav-item" lay-unselect>
+                        <a href="javascript:"></a>
+                        <dl class="layui-nav-child layui-anim-fadein">
+                            <dd layadmin-event="closeThisTabs"><a href="javascript:">关闭当前标签页</a></dd>
+                            <dd layadmin-event="closeOtherTabs"><a href="javascript:">关闭其它标签页</a></dd>
+                        <dd layadmin-event="closeRightTabs"><a href="javascript:">关闭右侧标签页</a></dd>
+                        <dd layadmin-event="closeAllTabs"><a href="javascript:">关闭全部标签页</a></dd>
+                        </dl>
+                    </li>
+                </ul>
+            </div>
+            <div class="layui-tab" lay-unauto lay-allowClose="true" lay-filter="layadmin-layout-tabs">
+                <ul class="layui-tab-title" id="LAY_app_tabsheader">
+                    <li th:attr="lay-id=${homePath}, lay-attr=${homePath}" class="layui-this">
+                        <i class="layui-icon layui-icon-home"></i>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 主体内容 -->
+        <div class="layui-body" id="LAY_app_body">
+            <div class="layadmin-tabsbody-item layui-show">
+                <iframe th:src="${homePath}" src="/home" class="layadmin-iframe" style="border-style: none;"></iframe>
+            </div>
+        </div>
+
+        <!-- 辅助元素，一般用于移动设备下遮罩 -->
+        <div class="layadmin-body-shade" layadmin-event="shade"></div>
+    </div>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.config({
+        base: '/admin/', version: true
+    }).use(['index'], function () {
+        var layer = layui.layer;
+
+        // 覆盖主题默认的"退出"行为：跳转后端 /logout，由 Sa-Token 清理会话
+        layui.admin.events.logout = function () {
+            layer.confirm('确定要退出登录吗？', {icon: 3, title: '提示'}, function (index) {
+                layer.close(index);
+                location.href = '/logout';
+            });
+        };
+    });
+</script>
+</body>
+</html>

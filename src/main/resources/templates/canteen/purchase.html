@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>采购入库</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .item-add { background: #fafbfc; padding: 10px 12px; border: 1px dashed #dcdfe6; border-radius: 4px; }
+        .sum-bar { margin-top: 8px; text-align: right; font-size: 13px; color: #4a5360; }
+        .sum-bar b { color: #e13c3c; font-size: 15px; margin: 0 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:170px">
+                        <select name="supplierName" id="searchSupplier">
+                            <option value="">全部供应商</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="草稿">草稿</option>
+                            <option value="已收货">已收货</option>
+                            <option value="已入库">已入库</option>
+                            <option value="已结算">已结算</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="payStatus">
+                            <option value="">全部付款</option>
+                            <option value="未付款">未付款</option>
+                            <option value="部分付款">部分付款</option>
+                            <option value="已付款">已付款</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:130px">
+                        <input type="text" name="keywords" placeholder="入库单号" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="billTable" lay-filter="billTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="listToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新增采购入库</button>
+    </div>
+</script>
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">查看</a>
+    {{# if(d.status === '草稿' || d.status === '已收货'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="post">入库</a>
+    {{# } }}
+    {{# if(d.payStatus !== '已付款'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="pay">付款</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="formWrap" style="display:none;padding:14px 16px 0">
+    <form class="layui-form" lay-filter="billForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">入库单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="purchaseNo" id="billNo" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">供应商</label>
+                    <div class="layui-input-block">
+                        <select name="supplierId" id="billSupplier" lay-verify="required" lay-search></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">入库日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="purchaseDate" id="billDate" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">采购类型</label>
+                    <div class="layui-input-block">
+                        <select name="purchaseType">
+                            <option value="日常采购">日常采购</option>
+                            <option value="定点采购">定点采购</option>
+                            <option value="紧急采购">紧急采购</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">发票号码</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="invoiceNo" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="草稿">草稿</option>
+                            <option value="已收货">已收货</option>
+                            <option value="已入库">已入库</option>
+                            <option value="已结算">已结算</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">采购人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="buyer" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">验收人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checker" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">经办人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="handler" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item item-add">
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:auto">物料</label>
+                <div class="layui-input-inline" style="width:200px">
+                    <select id="itemMaterial" lay-search></select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:auto">数量</label>
+                <div class="layui-input-inline" style="width:90px">
+                    <input type="number" id="itemQty" step="0.001" class="layui-input" placeholder="0">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:auto">单价</label>
+                <div class="layui-input-inline" style="width:100px">
+                    <input type="number" id="itemPrice" step="0.0001" class="layui-input" placeholder="0">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:auto">税率%</label>
+                <div class="layui-input-inline" style="width:80px">
+                    <input type="number" id="itemRate" step="0.01" class="layui-input" value="0">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" id="addItemBtn">添加明细</button>
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="clearItemBtn">清空</button>
+            </div>
+        </div>
+
+        <table class="layui-hide" id="itemTable" lay-filter="itemTable"></table>
+
+        <div class="sum-bar">
+            明细 <b id="itemCount">0</b> 条 · 不含税合计 <b id="sumAmount">0.00</b> 元 ·
+            税额 <b id="sumTax">0.00</b> 元 · 价税合计 <b id="sumTotal">0.00</b> 元
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 明细只读查看 -->
+<div id="detailWrap" style="display:none;padding:14px">
+    <table class="layui-hide" id="detailTable"></table>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate;
+        var idx = null;
+        var items = [];
+        var materials = [];
+        form.render();
+        laydate.render({elem: '#billDate', value: new Date()});
+
+        function money(v) {
+            var n = Number(v || 0);
+            return n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+        function num(v, p) {
+            var n = Number(v || 0);
+            return n.toFixed(p === undefined ? 3 : p);
+        }
+
+        // ---------------------------------------------------------- 字典
+        $.get('/api/canteen/supplier/all', function (res) {
+            var opts = '<option value="">请选择供应商</option>';
+            var searchOpts = '<option value="">全部供应商</option>';
+            if (res.code === 0) {
+                (res.data || []).forEach(function (s) {
+                    opts += '<option value="' + s.id + '">' + s.supplierName + '</option>';
+                    searchOpts += '<option value="' + s.supplierName + '">' + s.supplierName + '</option>';
+                });
+            }
+            $('#billSupplier').html(opts);
+            $('#searchSupplier').html(searchOpts);
+            form.render('select');
+        });
+
+        $.get('/api/canteen/material/all', function (res) {
+            if (res.code === 0) {
+                materials = res.data || [];
+                var opts = '<option value="">请选择物料</option>';
+                materials.forEach(function (m) {
+                    opts += '<option value="' + m.id + '">' + m.materialName
+                            + (m.spec ? ' / ' + m.spec : '') + '</option>';
+                });
+                $('#itemMaterial').html(opts);
+                form.render('select');
+            }
+        });
+
+        // ---------------------------------------------------------- 主表
+        table.render({
+            elem: '#billTable', url: '/api/canteen/purchase/list', method: 'get',
+            toolbar: '#listToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50],
+            cols: [[
+                {field: 'purchaseNo', title: '入库单号', width: 130, sort: true},
+                {field: 'supplierName', title: '供应商', minWidth: 170},
+                {field: 'purchaseType', title: '采购类型', width: 100, align: 'center'},
+                {field: 'purchaseDate', title: '入库日期', width: 110, align: 'center', sort: true},
+                {field: 'itemCount', title: '明细', width: 70, align: 'center'},
+                {field: 'totalAmount', title: '不含税(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.totalAmount); }},
+                {field: 'taxAmount', title: '税额(元)', width: 100, align: 'right',
+                    templet: function (r) { return money(r.taxAmount); }},
+                {field: 'totalWithTax', title: '价税合计(元)', width: 130, align: 'right', sort: true,
+                    templet: function (r) {
+                        return '<span style="font-weight:600">' + money(r.totalWithTax) + '</span>';
+                    }},
+                {field: 'payStatus', title: '付款', width: 100, align: 'center',
+                    templet: function (r) {
+                        var c = r.payStatus === '已付款' ? 'layui-bg-green'
+                                : (r.payStatus === '部分付款' ? 'layui-bg-orange' : '');
+                        return '<span class="layui-badge ' + c + '">' + (r.payStatus || '-') + '</span>';
+                    }},
+                {field: 'buyer', title: '采购人', width: 90},
+                {field: 'status', title: '状态', width: 100, align: 'center',
+                    templet: function (r) {
+                        var c = r.status === '草稿' ? '' : 'layui-bg-blue';
+                        return '<span class="layui-badge ' + c + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 260, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('billTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('billTable', {
+                    where: {supplierName: '', status: '', payStatus: '', keywords: ''}, page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        table.on('toolbar(billTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(billTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'detail') {
+                $.get('/api/canteen/purchase/detail', {id: row.id}, function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
+                    openForm(res.data.bill, res.data.items);
+                });
+            } else if (obj.event === 'post') {
+                layer.confirm('确认单据「' + row.purchaseNo + '」入库？入库后将按加权平均法更新库存结存。',
+                    function (i) {
+                        layer.close(i);
+                        $.post('/api/canteen/purchase/post', {id: row.id}, function (res) {
+                            layer.msg(res.code === 0 ? res.data : (res.msg || '操作失败'));
+                            table.reload('billTable');
+                        });
+                    });
+            } else if (obj.event === 'pay') {
+                layer.prompt({
+                    formType: 0, title: '付款金额（元）', value: Number(row.totalWithTax - row.paidAmount).toFixed(2)
+                }, function (amount, i) {
+                    layer.close(i);
+                    $.post('/api/canteen/purchase/pay', {
+                        id: row.id, amount: amount, payType: '银行转账', handler: '系统操作'
+                    }, function (res) {
+                        layer.msg(res.code === 0 ? res.data : (res.msg || '付款失败'));
+                        table.reload('billTable');
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除单据「' + row.purchaseNo + '」？已入库的会同时冲回库存。', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/purchase/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('billTable');
+                    });
+                });
+            }
+        });
+
+        // ---------------------------------------------------------- 明细录入
+        var itemIns = table.render({
+            elem: '#itemTable', data: [], page: false, limit: 100,
+            cols: [[
+                {field: 'materialName', title: '物料名称', minWidth: 140},
+                {field: 'spec', title: '规格', width: 100},
+                {field: 'unit', title: '单位', width: 70, align: 'center'},
+                {field: 'quantity', title: '数量', width: 110, align: 'right',
+                    templet: function (r) {
+                        return '<input class="layui-input i-qty" data-i="' + r.rowIndex
+                                + '" value="' + r.quantity + '" style="height:26px;text-align:right">';
+                    }},
+                {field: 'unitPrice', title: '单价(元)', width: 110, align: 'right',
+                    templet: function (r) {
+                        return '<input class="layui-input i-price" data-i="' + r.rowIndex
+                                + '" value="' + r.unitPrice + '" style="height:26px;text-align:right">';
+                    }},
+                {field: 'taxRate', title: '税率%', width: 90, align: 'right',
+                    templet: function (r) {
+                        return '<input class="layui-input i-rate" data-i="' + r.rowIndex
+                                + '" value="' + r.taxRate + '" style="height:26px;text-align:right">';
+                    }},
+                {field: 'amount', title: '不含税金额', width: 120, align: 'right',
+                    templet: function (r) { return money(r.amount); }},
+                {field: 'totalAmount', title: '价税合计', width: 120, align: 'right',
+                    templet: function (r) {
+                        return '<span style="font-weight:600">' + money(r.totalAmount) + '</span>';
+                    }},
+                {title: '操作', width: 80, align: 'center',
+                    templet: function (r) {
+                        return '<a class="layui-btn layui-btn-xs layui-btn-danger i-del" data-i="'
+                                + r.rowIndex + '">删除</a>';
+                    }}
+            ]],
+            done: function () { calcSum(); }
+        });
+
+        function recalc(i) {
+            var it = items[i];
+            it.amount = Number((it.quantity * it.unitPrice).toFixed(2));
+            it.taxAmount = Number((it.amount * it.taxRate / 100).toFixed(2));
+            it.totalAmount = Number((it.amount + it.taxAmount).toFixed(2));
+        }
+
+        function calcAll() {
+            for (var i = 0; i < items.length; i++) recalc(i);
+        }
+
+        function calcSum() {
+            var amount = 0, tax = 0;
+            items.forEach(function (it) { amount += it.amount; tax += it.taxAmount; });
+            $('#itemCount').text(items.length);
+            $('#sumAmount').text(money(amount));
+            $('#sumTax').text(money(tax));
+            $('#sumTotal').text(money(amount + tax));
+        }
+
+        function reloadItems() {
+            calcAll();
+            // rowIndex 是行内编辑回写数组用的下标（layui 的 LAY_INDEX 从 1 开始，不适合直接用）
+            items.forEach(function (it, k) { it.rowIndex = k; });
+            itemIns.reload({data: items});
+        }
+
+        /** 去掉提交体里前端专用的字段，避免后端反序列化未知属性报错。 */
+        function cleanItems() {
+            return items.map(function (it) {
+                return {
+                    id: it.id || null, materialId: it.materialId, materialCode: it.materialCode,
+                    materialName: it.materialName, category: it.category, spec: it.spec, unit: it.unit,
+                    quantity: Number(it.quantity || 0), unitPrice: Number(it.unitPrice || 0),
+                    taxRate: Number(it.taxRate || 0), remark: it.remark || ''
+                };
+            });
+        }
+
+        $('#addItemBtn').on('click', function () {
+            var mid = $('#itemMaterial').val();
+            if (!mid) { layer.msg('请选择物料'); return; }
+            var m = null;
+            materials.forEach(function (x) { if (String(x.id) === String(mid)) m = x; });
+            if (!m) { layer.msg('物料不存在'); return; }
+            var qty = Number($('#itemQty').val() || 0);
+            if (qty <= 0) { layer.msg('数量必须大于 0'); return; }
+            items.push({
+                materialId: m.id, materialCode: m.materialCode, materialName: m.materialName,
+                category: m.category, spec: m.spec, unit: m.unit,
+                quantity: qty,
+                unitPrice: Number($('#itemPrice').val() || m.unitPrice || 0),
+                taxRate: Number($('#itemRate').val() || 0),
+                amount: 0, taxAmount: 0, totalAmount: 0
+            });
+            $('#itemQty').val('');
+            reloadItems();
+        });
+
+        $('#clearItemBtn').on('click', function () {
+            items = [];
+            reloadItems();
+        });
+
+        $(document).on('change', '.i-qty', function () {
+            items[Number($(this).data('i'))].quantity = Number($(this).val() || 0);
+            reloadItems();
+        });
+        $(document).on('change', '.i-price', function () {
+            items[Number($(this).data('i'))].unitPrice = Number($(this).val() || 0);
+            reloadItems();
+        });
+        $(document).on('change', '.i-rate', function () {
+            items[Number($(this).data('i'))].taxRate = Number($(this).val() || 0);
+            reloadItems();
+        });
+        $(document).on('click', '.i-del', function () {
+            items.splice(Number($(this).data('i')), 1);
+            reloadItems();
+        });
+
+        // ---------------------------------------------------------- 表单
+        function openForm(bill, billItems) {
+            items = [];
+            if (billItems) {
+                billItems.forEach(function (it) { items.push($.extend({}, it)); });
+            }
+            var d = bill || {};
+            if (!d.id) {
+                $.ajax({
+                    url: '/api/canteen/purchase/next-no', async: false,
+                    success: function (res) { $('#billNo').val(res.code === 0 ? res.data : ''); }
+                });
+                $('#billDate').val(new Date().toISOString().slice(0, 10));
+            }
+            form.val('billForm', {
+                id: d.id || '', purchaseNo: d.purchaseNo || $('#billNo').val(),
+                supplierId: d.supplierId || '', purchaseType: d.purchaseType || '日常采购',
+                invoiceNo: d.invoiceNo || '', status: d.status || '草稿',
+                buyer: d.buyer || '', checker: d.checker || '', handler: d.handler || '',
+                remark: d.remark || ''
+            });
+            if (d.purchaseDate) $('#billDate').val(d.purchaseDate);
+            reloadItems();
+            idx = layer.open({
+                type: 1, title: bill && bill.id ? '采购入库单 ' + bill.purchaseNo : '新增采购入库单',
+                area: ['1180px', '640px'], content: $('#formWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#cancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doSubmit)', function (obj) {
+            if (items.length === 0) { layer.msg('请至少添加一条明细'); return false; }
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.supplierId = f.supplierId ? Number(f.supplierId) : null;
+            $.ajax({
+                url: '/api/canteen/purchase/save', type: 'post',
+                contentType: 'application/json',
+                data: JSON.stringify({bill: f, items: cleanItems()}),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('billTable');
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>借阅管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .toolbar-form { background: #fff; padding: 12px 12px 0; border-radius: 4px 4px 0 0; }
+        .table-box { background: #fff; padding: 8px; border-radius: 0 0 4px 4px; }
+        .v-red { color: #e13c3c; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <form class="layui-form layui-form-pane toolbar-form" id="searchForm" lay-filter="searchForm">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:80px">关键词</label>
+                <div class="layui-input-inline" style="width:200px">
+                    <input type="text" name="keywords" placeholder="案卷 / 借阅人 / 单号" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:60px">状态</label>
+                <div class="layui-input-inline" style="width:130px">
+                    <select name="status">
+                        <option value="">全部</option>
+                        <option value="借阅中">借阅中</option>
+                        <option value="已归还">已归还</option>
+                        <option value="逾期">逾期</option>
+                        <option value="已丢失">已丢失</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn layui-btn-primary" id="searchBtn">查询</button>
+                <button type="button" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+                <button type="button" class="layui-btn" id="addBtn">借阅登记</button>
+                <button type="button" class="layui-btn layui-btn-primary" id="refreshBtn">刷新状态</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-box">
+        <table class="layui-hide" id="borrowTable" lay-filter="borrowTable"></table>
+    </div>
+</div>
+
+<!-- 借阅登记表单 -->
+<div id="formBox" style="display:none; padding: 14px 12px 4px">
+    <form class="layui-form layui-form-pane" id="editForm" lay-filter="editForm">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">借阅案卷</label>
+                <div class="layui-input-inline" style="width:520px">
+                    <select name="volumeId" id="fVolume" lay-search lay-verify="required"></select>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">借阅人</label>
+                <div class="layui-input-inline" style="width:140px">
+                    <input type="text" name="borrower" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">所在部门</label>
+                <div class="layui-input-inline" style="width:150px">
+                    <input type="text" name="borrowerDept" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">借出日期</label>
+                <div class="layui-input-inline" style="width:150px">
+                    <input type="text" name="borrowDate" id="fBorrowDate" class="layui-input" placeholder="yyyy-MM-dd">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">应还日期</label>
+                <div class="layui-input-inline" style="width:150px">
+                    <input type="text" name="dueDate" id="fDueDate" class="layui-input" placeholder="yyyy-MM-dd">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">借阅用途</label>
+                <div class="layui-input-inline" style="width:520px">
+                    <input type="text" name="purpose" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">经手人</label>
+                <div class="layui-input-inline" style="width:140px">
+                    <input type="text" name="handler" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">审批人</label>
+                <div class="layui-input-inline" style="width:140px">
+                    <input type="text" name="approver" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button type="button" class="layui-btn" lay-submit lay-filter="saveSubmit">确认借出</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="return">归还</a>
+    <a class="layui-btn layui-btn-xs" lay-event="renew">续借</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="lost">报失</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer,
+                $ = layui.jquery, laydate = layui.laydate;
+
+        laydate.render({elem: '#fBorrowDate', value: new Date(), done: function (value) {
+            var d = new Date(value);
+            d.setDate(d.getDate() + 15);
+            $('#fDueDate').val(d.getFullYear() + '-'
+                    + String(d.getMonth() + 1).padStart(2, '0') + '-'
+                    + String(d.getDate()).padStart(2, '0'));
+        }});
+        laydate.render({elem: '#fDueDate'});
+
+        var tableIns = table.render({
+            elem: '#borrowTable', url: '/api/archive/borrow/list', method: 'get',
+            page: {limit: 20, limits: [20, 50, 100]}, height: 'full-120',
+            cols: [[
+                {field: 'borrowNo', title: '借阅单号', width: 140},
+                {field: 'volumeNo', title: '案卷号', width: 140},
+                {field: 'volumeTitle', title: '案卷题名', minWidth: 220},
+                {field: 'borrower', title: '借阅人', width: 90},
+                {field: 'borrowerDept', title: '部门', width: 110},
+                {field: 'purpose', title: '用途', width: 130},
+                {field: 'borrowDate', title: '借出', width: 110, sort: true},
+                {field: 'dueDate', title: '应还', width: 110},
+                {field: 'returnDate', title: '归还', width: 110},
+                {field: 'overdueDays', title: '逾期(天)', width: 90, align: 'center',
+                    templet: function (r) {
+                        var n = Number(r.overdueDays || 0);
+                        return n > 0 ? '<span class="v-red">' + n + '</span>' : '0';
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var map = {'借阅中': 'layui-bg-blue', '已归还': 'layui-bg-green',
+                            '逾期': 'layui-bg-red', '已丢失': 'layui-bg-orange'};
+                        return '<span class="layui-badge ' + (map[r.status] || '') + '">'
+                                + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', toolbar: '#rowBar', width: 240, fixed: 'right', align: 'center'}
+            ]]
+        });
+
+        $('#searchBtn').on('click', function () {
+            tableIns.reload({where: form.val('searchForm'), page: {curr: 1}});
+        });
+        $('#resetBtn').on('click', function () {
+            form.val('searchForm', {keywords: '', status: ''});
+            tableIns.reload({where: {}, page: {curr: 1}});
+        });
+        $('#refreshBtn').on('click', function () {
+            $.post('/api/archive/refresh-status', function (res) {
+                if (res.code !== 0) { layer.msg(res.msg || '刷新失败'); return; }
+                layer.msg('状态已刷新');
+                tableIns.reload();
+            });
+        });
+
+        // 只列出「在库」的案卷，借出后由后端把状态改为借阅中
+        function loadVolumes() {
+            $.get('/api/archive/volume/list', {limit: 1000, status: '在库'}, function (res) {
+                if (res.code !== 0) return;
+                var html = '<option value="">请选择案卷</option>';
+                (res.data || []).forEach(function (v) {
+                    html += '<option value="' + v.id + '">' + v.volumeNo + ' ' + v.title + '</option>';
+                });
+                $('#fVolume').html(html);
+                form.render('select');
+            });
+        }
+
+        $('#addBtn').on('click', function () {
+            loadVolumes();
+            var today = new Date(), due = new Date();
+            due.setDate(due.getDate() + 15);
+            function fmt(d) {
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+                        + '-' + String(d.getDate()).padStart(2, '0');
+            }
+            layer.open({
+                type: 1, title: '借阅登记', area: ['760px', '420px'], content: $('#formBox'),
+                success: function () {
+                    form.val('editForm', {
+                        volumeId: '', borrower: '', borrowerDept: '', purpose: '',
+                        borrowDate: fmt(today), dueDate: fmt(due), handler: '王玉芹', approver: '李雲钊'
+                    });
+                    form.render('select');
+                }
+            });
+        });
+        $('#cancelBtn').on('click', function () { layer.closeAll('page'); });
+
+        form.on('submit(saveSubmit)', function (obj) {
+            var data = obj.field;
+            data.volumeId = Number(data.volumeId);
+            if (!data.volumeId) { layer.msg('请选择借阅案卷'); return; }
+            $.ajax({
+                url: '/api/archive/borrow/create', type: 'post', contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '登记失败'); return; }
+                    layer.msg('借阅登记成功');
+                    layer.closeAll('page');
+                    tableIns.reload();
+                }
+            });
+        });
+
+        table.on('tool(borrowTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'return') {
+                if (row.returnDate) { layer.msg('该记录已归还'); return; }
+                layer.confirm('确认归还「' + row.volumeTitle + '」？', function (index) {
+                    $.post('/api/archive/borrow/return', {id: row.id}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '操作失败'); return; }
+                        layer.msg('已归还');
+                        layer.close(index);
+                        tableIns.reload();
+                    });
+                });
+            } else if (obj.event === 'renew') {
+                if (row.returnDate) { layer.msg('已归还的记录不能续借'); return; }
+                layer.prompt({title: '续借天数', value: 15}, function (value, index) {
+                    $.post('/api/archive/borrow/renew', {id: row.id, days: value}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '操作失败'); return; }
+                        layer.msg('续借成功，应还日期 ' + res.data);
+                        layer.close(index);
+                        tableIns.reload();
+                    });
+                });
+            } else if (obj.event === 'lost') {
+                layer.confirm('确认将「' + row.volumeTitle + '」标记为丢失？', function (index) {
+                    $.post('/api/archive/borrow/lost', {id: row.id}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '操作失败'); return; }
+                        layer.msg('已标记丢失');
+                        layer.close(index);
+                        tableIns.reload();
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除该借阅记录？', function (index) {
+                    $.post('/api/archive/borrow/delete', {id: row.id}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '删除失败'); return; }
+                        layer.msg('已删除');
+                        layer.close(index);
+                        tableIns.reload();
+                    });
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>盘点明细</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .stat-bar { background: #fff; padding: 12px 14px; border-radius: 4px; margin-bottom: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .kpi { display: inline-block; min-width: 120px; padding: 0 18px; border-left: 1px solid #eee; }
+        .kpi:first-child { border-left: none; }
+        .kpi-title { color: #9aa1ab; font-size: 12px; }
+        .kpi-value { font-size: 20px; font-weight: 600; margin-top: 4px; }
+        .kpi-value.red { color: #e13c3c; }
+        .kpi-value.green { color: #18a058; }
+        .diff-plus { color: #e13c3c; font-weight: 600; }
+        .diff-minus { color: #18a058; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="stat-bar">
+        <form class="layui-form" lay-filter="taskForm">
+            <div class="layui-form-item" style="margin-bottom:6px">
+                <div class="layui-inline">
+                    <label class="layui-form-label" style="width:70px">盘点任务</label>
+                    <div class="layui-input-inline" style="width:300px">
+                        <select name="taskId" id="taskSel" lay-filter="taskSel" lay-search>
+                            <option value="">请选择盘点任务</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button type="button" class="layui-btn layui-btn-sm" id="scanBtn">去扫码盘点</button>
+                    <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="refreshBtn">刷新统计</button>
+                    <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="handleAllBtn">批量处理差异</button>
+                </div>
+            </div>
+        </form>
+        <div id="statBox" style="padding-top:4px">
+            <span class="kpi"><span class="kpi-title">应盘</span><br><span class="kpi-value" id="kSubject">0</span></span>
+            <span class="kpi"><span class="kpi-title">已盘</span><br><span class="kpi-value" id="kChecked">0</span></span>
+            <span class="kpi"><span class="kpi-title">未盘</span><br><span class="kpi-value" id="kUnchecked">0</span></span>
+            <span class="kpi"><span class="kpi-title">正常</span><br><span class="kpi-value" id="kNormal">0</span></span>
+            <span class="kpi"><span class="kpi-title">盘盈</span><br><span class="kpi-value red" id="kProfit">0</span></span>
+            <span class="kpi"><span class="kpi-title">盘亏</span><br><span class="kpi-value green" id="kLoss">0</span></span>
+            <span class="kpi"><span class="kpi-title">差异净额(元)</span><br><span class="kpi-value" id="kDiff">0.00</span></span>
+        </div>
+    </div>
+
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <input type="hidden" name="taskId" id="hiddenTaskId">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:180px">
+                        <input type="text" name="keywords" placeholder="名称 / 编码 / 码值 / 盘点人"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="subjectType">
+                            <option value="">全部类型</option>
+                            <option value="ASSET">固定资产</option>
+                            <option value="GOODS">库存物资</option>
+                            <option value="CANTEEN">食堂物资</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="result">
+                            <option value="">全部结果</option>
+                            <option value="未盘">未盘</option>
+                            <option value="正常">正常</option>
+                            <option value="盘盈">盘盈</option>
+                            <option value="盘亏">盘亏</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:130px">
+                        <select name="handleStatus">
+                            <option value="">全部处理状态</option>
+                            <option value="待处理">待处理</option>
+                            <option value="已确认">已确认</option>
+                            <option value="已调账">已调账</option>
+                            <option value="无需处理">无需处理</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="recordTable" lay-filter="recordTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="check">登记</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="handle">处理</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="checkWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="checkForm">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">标的</label>
+            <div class="layui-input-block">
+                <div style="padding:6px 0;line-height:22px" id="checkSubject"></div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">账面数量</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="bookQty" readonly class="layui-input" style="background:#f7f7f7">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实盘数量</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="actualQty" lay-verify="required" step="0.001"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checker" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">数据来源</label>
+                    <div class="layui-input-block">
+                        <select name="checkSource">
+                            <option value="手工录入">手工录入</option>
+                            <option value="PC扫码">PC扫码</option>
+                            <option value="APP扫码">APP扫码</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" placeholder="如：设备外借未归还 / 存放地点已变更"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doCheck">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="checkCancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<div id="handleWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="handleForm">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">标的</label>
+            <div class="layui-input-block">
+                <div style="padding:6px 0;line-height:22px" id="handleSubject"></div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">处理结论</label>
+            <div class="layui-input-block">
+                <select name="handleStatus">
+                    <option value="已确认">已确认（差异认可，暂不调账）</option>
+                    <option value="已调账">已调账（回写源台账数量）</option>
+                    <option value="无需处理">无需处理</option>
+                    <option value="待处理">退回待处理</option>
+                </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">处理意见</label>
+            <div class="layui-input-block">
+                <input type="text" name="handleOpinion" placeholder="如：责任人已确认，按实盘数调账"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">处理人</label>
+            <div class="layui-input-block">
+                <input type="text" name="handler" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doHandle">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="handleCancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var idx = null, currentRow = null;
+
+        // 支持从任务页带 taskId 直接进入
+        var urlTaskId = new URLSearchParams(location.search).get('taskId');
+        var currentTaskId = urlTaskId ? urlTaskId : '';
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? v : n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function typeLabel(t) {
+            return t === 'ASSET' ? '固定资产' : (t === 'GOODS' ? '库存物资' : (t === 'CANTEEN' ? '食堂物资' : '-'));
+        }
+
+        // 任务下拉
+        $.get('/api/inventory/task/all', function (res) {
+            if (res.code !== 0) return;
+            var list = res.data || [];
+            list.forEach(function (t) {
+                $('#taskSel').append('<option value="' + t.id + '">' + t.taskNo + ' · ' + t.taskName + '</option>');
+            });
+            // 未从任务页带入时，默认落在"进行中"的任务上，避免进来看到一片 0
+            if (!currentTaskId) {
+                var running = list.filter(function (t) { return t.status === '进行中'; });
+                currentTaskId = running.length ? running[0].id : (list.length ? list[0].id : '');
+            }
+            $('#taskSel').val(currentTaskId);
+            $('#hiddenTaskId').val(currentTaskId);
+            form.render('select');
+            if (currentTaskId) {
+                loadStat(currentTaskId);
+                table.reload('recordTable', {where: {taskId: currentTaskId}, page: {curr: 1}});
+            }
+        });
+
+        form.on('select(taskSel)', function (obj) {
+            currentTaskId = obj.value;
+            $('#hiddenTaskId').val(currentTaskId);
+            loadStat(currentTaskId);
+            table.reload('recordTable', {where: {taskId: currentTaskId}, page: {curr: 1}});
+        });
+
+        function loadStat(taskId) {
+            if (!taskId) {
+                $('#kSubject,#kChecked,#kUnchecked,#kNormal,#kProfit,#kLoss').text('0');
+                $('#kDiff').text('0.00');
+                return;
+            }
+            $.get('/api/inventory/task/stat', {id: taskId}, function (res) {
+                if (res.code !== 0 || !res.data) return;
+                var d = res.data;
+                $('#kSubject').text(d.subjectCount || 0);
+                $('#kChecked').text(d.checkedCount || 0);
+                $('#kUnchecked').text((d.subjectCount || 0) - (d.checkedCount || 0));
+                $('#kNormal').text(d.normalCount || 0);
+                $('#kProfit').text(d.profitCount || 0);
+                $('#kLoss').text(d.lossCount || 0);
+                $('#kDiff').text(money(d.diffAmount));
+            });
+        }
+
+        $('#refreshBtn').on('click', function () {
+            loadStat(currentTaskId);
+            table.reload('recordTable');
+        });
+        $('#scanBtn').on('click', function () {
+            if (!currentTaskId) { layer.msg('请先选择盘点任务'); return; }
+            location.href = '/inventory/scan?taskId=' + currentTaskId;
+        });
+        $('#handleAllBtn').on('click', function () {
+            if (!currentTaskId) { layer.msg('请先选择盘点任务'); return; }
+            layer.confirm('将本任务全部「待处理」差异设为「已确认」？<br>若需回写台账请到明细行选择「已调账」。',
+                function (i) {
+                    layer.close(i);
+                    $.post('/api/inventory/record/handle-all',
+                        {taskId: currentTaskId, handleStatus: '已确认'}, function (res) {
+                            layer.msg(res.code === 0 ? ('已处理 ' + res.data + ' 条') : (res.msg || '处理失败'));
+                            loadStat(currentTaskId);
+                            table.reload('recordTable');
+                        });
+                });
+        });
+
+        table.render({
+            elem: '#recordTable', url: '/api/inventory/record/list', method: 'get',
+            where: {taskId: currentTaskId},
+            defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50, 100], height: 480,
+            cols: [[
+                {field: 'subjectCode', title: '编码', width: 120},
+                {field: 'subjectName', title: '标的名称', minWidth: 160},
+                {field: 'subjectType', title: '类型', width: 90, align: 'center',
+                    templet: function (r) { return typeLabel(r.subjectType); }},
+                {field: 'category', title: '分类', width: 110},
+                {field: 'spec', title: '规格', width: 120},
+                {field: 'location', title: '存放地点', width: 120},
+                {field: 'custodian', title: '保管人', width: 90},
+                {field: 'bookQty', title: '账面数', width: 90, align: 'right'},
+                {field: 'actualQty', title: '实盘数', width: 90, align: 'right',
+                    templet: function (r) {
+                        return r.actualQty === null || r.actualQty === undefined
+                                ? '<span style="color:#bbb">未盘</span>' : r.actualQty;
+                    }},
+                {field: 'diffQty', title: '差异', width: 90, align: 'right',
+                    templet: function (r) {
+                        var v = Number(r.diffQty || 0);
+                        if (!v) return '0';
+                        return v > 0 ? '<span class="diff-plus">+' + v + '</span>'
+                                : '<span class="diff-minus">' + v + '</span>';
+                    }},
+                {field: 'diffAmount', title: '差异金额', width: 110, align: 'right',
+                    templet: function (r) { return money(r.diffAmount); }},
+                {field: 'result', title: '结果', width: 80, align: 'center',
+                    templet: function (r) {
+                        var color = r.result === '盘盈' ? 'layui-bg-red'
+                                : (r.result === '盘亏' ? 'layui-bg-green'
+                                : (r.result === '正常' ? 'layui-bg-blue' : ''));
+                        return '<span class="layui-badge ' + color + '">' + (r.result || '-') + '</span>';
+                    }},
+                {field: 'checker', title: '盘点人', width: 90},
+                {field: 'checkTime', title: '盘点时间', width: 160},
+                {field: 'checkSource', title: '来源', width: 90, align: 'center'},
+                {field: 'handleStatus', title: '处理状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        return r.handleStatus === '待处理'
+                                ? '<span class="layui-badge layui-bg-orange">待处理</span>'
+                                : '<span class="layui-badge">' + (r.handleStatus || '-') + '</span>';
+                    }},
+                {field: 'handleOpinion', title: '处理意见', minWidth: 150},
+                {title: '操作', width: 180, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            obj.field.taskId = currentTaskId;
+            table.reload('recordTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+
+        table.on('tool(recordTable)', function (obj) {
+            var d = obj.data;
+            if (obj.event === 'check') openCheck(d);
+            else if (obj.event === 'handle') openHandle(d);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除该条盘点明细？', function (i) {
+                    layer.close(i);
+                    $.post('/api/inventory/record/delete', {id: d.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        loadStat(currentTaskId);
+                        table.reload('recordTable');
+                    });
+                });
+            }
+        });
+
+        function openCheck(row) {
+            currentRow = row;
+            $('#checkSubject').html('<b>' + row.subjectName + '</b>（' + typeLabel(row.subjectType)
+                    + '）<br><span style="color:#888;font-size:12px">编码 ' + (row.subjectCode || '-')
+                    + '　规格 ' + (row.spec || '-') + '　' + (row.location || '-') + '</span>');
+            form.val('checkForm', {
+                id: row.id, bookQty: row.bookQty,
+                actualQty: row.actualQty === null || row.actualQty === undefined ? '' : row.actualQty,
+                checker: row.checker || '', checkSource: row.checkSource || '手工录入', remark: row.remark || ''
+            });
+            idx = layer.open({
+                type: 1, title: '登记实盘数量', area: ['620px', '420px'], content: $('#checkWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        function openHandle(row) {
+            currentRow = row;
+            $('#handleSubject').html('<b>' + row.subjectName + '</b>　账面 ' + row.bookQty
+                    + '　实盘 ' + (row.actualQty === null || row.actualQty === undefined ? '未盘' : row.actualQty)
+                    + '　<span class="' + (Number(row.diffQty || 0) >= 0 ? 'diff-plus' : 'diff-minus') + '">'
+                    + (Number(row.diffQty || 0) > 0 ? '+' : '') + Number(row.diffQty || 0) + '</span>');
+            form.val('handleForm', {
+                id: row.id, handleStatus: row.handleStatus === '待处理' ? '已确认' : row.handleStatus,
+                handleOpinion: row.handleOpinion || '', handler: row.handler || ''
+            });
+            idx = layer.open({
+                type: 1, title: '差异处理', area: ['620px', '380px'], content: $('#handleWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#checkCancelBtn').on('click', function () { layer.close(idx); });
+        $('#handleCancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doCheck)', function (obj) {
+            var f = obj.field;
+            f.id = Number(f.id);
+            f.actualQty = Number(f.actualQty);
+            $.ajax({
+                url: '/api/inventory/record/save', type: 'post',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    id: f.id, actualQty: f.actualQty, checker: f.checker,
+                    checkSource: f.checkSource, remark: f.remark
+                }),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已登记');
+                    loadStat(currentTaskId);
+                    table.reload('recordTable');
+                }
+            });
+            return false;
+        });
+
+        form.on('submit(doHandle)', function (obj) {
+            $.post('/api/inventory/record/handle', obj.field, function (res) {
+                if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                layer.close(idx); layer.msg('已处理');
+                loadStat(currentTaskId);
+                table.reload('recordTable');
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

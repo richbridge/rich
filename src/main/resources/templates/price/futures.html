@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>期货行情</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+        .up { color: #e13c3c; }
+        .down { color: #18a058; }
+        .flat { color: #8a9099; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:160px;margin-bottom:0">
+                    <select name="instrumentId" id="instrumentId" lay-search>
+                        <option value="">全部品种</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:160px;margin-bottom:0">
+                    <input type="text" name="contractCode" placeholder="合约代码" autocomplete="off"
+                           class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:160px;margin-bottom:0">
+                    <input type="text" id="tradeDate" placeholder="交易日" autocomplete="off"
+                           class="layui-input" readonly>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="futuresTable" lay-filter="futuresTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+
+        laydate.render({elem: '#tradeDate', type: 'date', max: 0});
+
+        /** 品种下拉：先拉已入库的品种清单。 */
+        function loadInstruments() {
+            $.get('/api/price/futures/instruments', function (res) {
+                if (res.code !== 0) return;
+                var rows = res.data || [];
+                var html = '<option value="">全部品种</option>';
+                for (var i = 0; i < rows.length; i++) {
+                    var r = rows[i];
+                    html += '<option value="' + r.instrument_id + '">'
+                        + String(r.instrument_id).toUpperCase() + '</option>';
+                }
+                $('#instrumentId').html(html);
+                form.render('select');
+            });
+        }
+
+        function num(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? '-' : n.toLocaleString('zh-CN', {
+                minimumFractionDigits: 2, maximumFractionDigits: 2
+            });
+        }
+
+        function int(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? '-' : n.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+        }
+
+        function chg(v) {
+            if (v === null || v === undefined || v === '') return '<span class="flat">-</span>';
+            var n = Number(v);
+            if (isNaN(n) || n === 0) return '<span class="flat">0.00</span>';
+            return '<span class="' + (n > 0 ? 'up' : 'down') + '">'
+                + (n > 0 ? '+' : '') + n.toFixed(2) + '</span>';
+        }
+
+        loadInstruments();
+
+        table.render({
+            elem: '#futuresTable',
+            url: '/api/price/futures/list',
+            method: 'get',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 20,
+            limits: [20, 50, 100],
+            cols: [[
+                {field: 'instrumentId', title: '品种', width: 90, templet: function (r) {
+                    return '<span class="layui-badge layui-bg-blue">'
+                        + String(r.instrumentId || '').toUpperCase() + '</span>';
+                }},
+                {field: 'instrumentName', title: '品种名称', width: 110},
+                {field: 'contractCode', title: '合约', width: 100, sort: true},
+                {field: 'tradeDate', title: '交易日', width: 110, sort: true},
+                {field: 'presettlementPrice', title: '前结算', width: 110,
+                    templet: function (r) { return num(r.presettlementPrice); }},
+                {field: 'openPrice', title: '开盘', width: 105,
+                    templet: function (r) { return num(r.openPrice); }},
+                {field: 'highPrice', title: '最高', width: 105,
+                    templet: function (r) { return num(r.highPrice); }},
+                {field: 'lowPrice', title: '最低', width: 105,
+                    templet: function (r) { return num(r.lowPrice); }},
+                {field: 'closePrice', title: '收盘', width: 110, sort: true,
+                    templet: function (r) { return num(r.closePrice); }},
+                {field: 'changeValue', title: '涨跌', width: 100,
+                    templet: function (r) { return chg(r.changeValue); }},
+                {field: 'volume', title: '成交量', width: 120, sort: true,
+                    templet: function (r) { return int(r.volume); }},
+                {field: 'turnover', title: '成交额', width: 150,
+                    templet: function (r) { return num(r.turnover); }},
+                {field: 'openInterest', title: '持仓量', width: 120,
+                    templet: function (r) { return int(r.openInterest); }},
+                {field: 'quoteTime', title: '行情时间', minWidth: 160}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('futuresTable', {
+                where: {
+                    instrumentId: data.field.instrumentId,
+                    contractCode: data.field.contractCode,
+                    tradeDate: $('#tradeDate').val()
+                },
+                page: {curr: 1}
+            });
+            return false;
+        });
+
+        $('#resetBtn').on('click', function () {
+            $('#tradeDate').val('');
+            setTimeout(function () {
+                table.reload('futuresTable', {
+                    where: {instrumentId: '', contractCode: '', tradeDate: ''},
+                    page: {curr: 1}
+                });
+            }, 10);
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

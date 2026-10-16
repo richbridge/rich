@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>被审计单位</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:220px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称 / 负责人"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:140px;margin-bottom:0">
+                    <select name="unitType">
+                        <option value="">全部类型</option>
+                        <option value="职能部门">职能部门</option>
+                        <option value="生产单位">生产单位</option>
+                        <option value="子公司">子公司</option>
+                        <option value="项目部">项目部</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="1">正常</option>
+                        <option value="0">停用</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="unitTable" lay-filter="unitTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="unitToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增单位
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="unitRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="unitFormWrap" style="display: none;">
+    <form class="layui-form" id="unitForm" lay-filter="unitForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">单位编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="unitNo" placeholder="如 U01" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">单位类型</label>
+                    <div class="layui-input-block">
+                        <select name="unitType">
+                            <option value="职能部门">职能部门</option>
+                            <option value="生产单位">生产单位</option>
+                            <option value="子公司">子公司</option>
+                            <option value="项目部">项目部</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">单位名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">负责人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="leader" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">联系人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="contact" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">联系电话</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="phone" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="1">正常</option>
+                            <option value="0">停用</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="unitSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="unitCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        var layerIndex = null;
+
+        table.render({
+            elem: '#unitTable',
+            url: '/api/audit/unit/list',
+            method: 'get',
+            toolbar: '#unitToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'unitNo', title: '单位编号', width: 110, sort: true},
+                {field: 'name', title: '单位名称', minWidth: 200},
+                {field: 'unitType', title: '单位类型', width: 120},
+                {field: 'leader', title: '负责人', width: 110},
+                {field: 'contact', title: '联系人', width: 110},
+                {field: 'phone', title: '联系电话', width: 140},
+                {
+                    field: 'status', title: '状态', width: 90,
+                    templet: function (r) {
+                        return r.status === 1
+                            ? '<span class="layui-badge layui-bg-green">正常</span>'
+                            : '<span class="layui-badge">停用</span>';
+                    }
+                },
+                {field: 'remark', title: '备注', minWidth: 160},
+                {title: '操作', width: 130, fixed: 'right', toolbar: '#unitRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('unitTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        table.on('toolbar(unitTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(unitTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除单位「' + esc(row.name) + '」吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/audit/unit/delete', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                            table.reload('unitTable');
+                        } else {
+                            layer.msg(res.msg || '删除失败');
+                        }
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('unitForm', {
+                id: d.id || '',
+                unitNo: d.unitNo || '',
+                name: d.name || '',
+                unitType: d.unitType || '职能部门',
+                leader: d.leader || '',
+                contact: d.contact || '',
+                phone: d.phone || '',
+                status: d.status === undefined ? 1 : d.status,
+                remark: d.remark || ''
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑单位' : '新增单位',
+                area: ['720px', '480px'],
+                content: $('#unitFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        form.on('submit(unitSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                unitNo: f.unitNo,
+                name: f.name,
+                unitType: f.unitType,
+                leader: f.leader,
+                contact: f.contact,
+                phone: f.phone,
+                status: Number(f.status),
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/audit/unit/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('unitTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#unitCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

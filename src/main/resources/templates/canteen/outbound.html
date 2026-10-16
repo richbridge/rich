@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>领用出库</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .item-add { background: #fafbfc; padding: 10px 12px; border: 1px dashed #dcdfe6; border-radius: 4px; }
+        .sum-bar { margin-top: 8px; text-align: right; font-size: 13px; color: #4a5360; }
+        .sum-bar b { color: #e13c3c; font-size: 15px; margin: 0 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:130px">
+                        <select name="outType">
+                            <option value="">全部类型</option>
+                            <option value="职工餐">职工餐</option>
+                            <option value="加班餐">加班餐</option>
+                            <option value="接待餐">接待餐</option>
+                            <option value="客饭">客饭</option>
+                            <option value="福利发放">福利发放</option>
+                            <option value="报损报废">报损报废</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:130px">
+                        <select name="deptName" id="searchDept">
+                            <option value="">全部部门</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="草稿">草稿</option>
+                            <option value="已出库">已出库</option>
+                            <option value="已记账">已记账</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="billTable" lay-filter="billTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="listToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新增领用出库</button>
+    </div>
+</script>
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="detail">查看</a>
+    {{# if(d.status === '草稿'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="post">出库</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="formWrap" style="display:none;padding:14px 16px 0">
+    <form class="layui-form" lay-filter="billForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">出库单号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="outNo" id="billNo" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">出库日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="outDate" id="billDate" lay-verify="required"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">出库类型</label>
+                    <div class="layui-input-block">
+                        <select name="outType">
+                            <option value="职工餐">职工餐</option>
+                            <option value="加班餐">加班餐</option>
+                            <option value="接待餐">接待餐</option>
+                            <option value="客饭">客饭</option>
+                            <option value="福利发放">福利发放</option>
+                            <option value="报损报废">报损报废</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">领用窗口</label>
+                    <div class="layui-input-block">
+                        <select name="windowName">
+                            <option value="主食间">主食间</option>
+                            <option value="副食间">副食间</option>
+                            <option value="面点间">面点间</option>
+                            <option value="凉菜间">凉菜间</option>
+                            <option value="职工餐厅">职工餐厅</option>
+                            <option value="接待餐厅">接待餐厅</option>
+                            <option value="库房">库房</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">领用部门</label>
+                    <div class="layui-input-block">
+                        <select name="deptName" id="billDept" lay-search></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">涉及人次</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="peopleCount" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">领用人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="receiver" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md3">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">保管员</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="handler" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item item-add">
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:auto">物料</label>
+                <div class="layui-input-inline" style="width:230px">
+                    <select id="itemMaterial" lay-filter="itemMaterial" lay-search></select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:auto">数量</label>
+                <div class="layui-input-inline" style="width:100px">
+                    <input type="number" id="itemQty" step="0.001" class="layui-input" placeholder="0">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <span class="layui-word-aux" id="stockTip">请先选择物料</span>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" id="addItemBtn">添加明细</button>
+                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="clearItemBtn">清空</button>
+            </div>
+        </div>
+
+        <table class="layui-hide" id="itemTable"></table>
+
+        <div class="sum-bar">
+            明细 <b id="itemCount">0</b> 条 · 出库金额合计 <b id="sumTotal">0.00</b> 元
+            <span class="layui-word-aux" style="margin-left:8px">单价取库存加权平均价，出库后自动结转成本</span>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate;
+        var idx = null, items = [], stocks = [];
+        form.render();
+        laydate.render({elem: '#billDate', value: new Date()});
+
+        function money(v) {
+            return Number(v || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+        function price(v) { return Number(v || 0).toFixed(4); }
+
+        $.get('/api/canteen/stock/list', {limit: 500}, function (res) {
+            if (res.code === 0) {
+                stocks = res.data || [];
+                var opts = '<option value="">请选择物料</option>';
+                stocks.forEach(function (s) {
+                    opts += '<option value="' + s.materialId + '">' + s.materialName
+                            + '（结存 ' + Number(s.quantity || 0) + ' ' + (s.unit || '') + '）</option>';
+                });
+                $('#itemMaterial').html(opts);
+                form.render('select');
+            }
+        });
+
+        $.get('/api/salary/dept/all', function (res) {
+            var opts = '<option value="">未指定</option>';
+            var searchOpts = '<option value="">全部部门</option>';
+            if (res.code === 0) {
+                (res.data || []).forEach(function (d) {
+                    opts += '<option value="' + d.deptName + '">' + d.deptName + '</option>';
+                    searchOpts += '<option value="' + d.deptName + '">' + d.deptName + '</option>';
+                });
+            }
+            $('#billDept').html(opts);
+            $('#searchDept').html(searchOpts);
+            form.render('select');
+        });
+
+        table.render({
+            elem: '#billTable', url: '/api/canteen/outbound/list', method: 'get',
+            toolbar: '#listToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50],
+            cols: [[
+                {field: 'outNo', title: '出库单号', width: 130, sort: true},
+                {field: 'outType', title: '出库类型', width: 100, align: 'center'},
+                {field: 'windowName', title: '领用窗口', width: 100},
+                {field: 'deptName', title: '领用部门', width: 120},
+                {field: 'outDate', title: '出库日期', width: 110, align: 'center', sort: true},
+                {field: 'peopleCount', title: '人次', width: 80, align: 'center'},
+                {field: 'itemCount', title: '明细', width: 70, align: 'center'},
+                {field: 'totalAmount', title: '出库金额(元)', minWidth: 130, align: 'right', sort: true,
+                    templet: function (r) {
+                        return '<span style="color:#ff9f43;font-weight:600">' + money(r.totalAmount) + '</span>';
+                    }},
+                {field: 'receiver', title: '领用人', width: 90},
+                {field: 'status', title: '状态', width: 100, align: 'center',
+                    templet: function (r) {
+                        return '<span class="layui-badge ' + (r.status === '草稿' ? '' : 'layui-bg-blue')
+                                + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 230, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('billTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('billTable', {where: {outType: '', deptName: '', status: ''}, page: {curr: 1}});
+            }, 10);
+        });
+
+        table.on('toolbar(billTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+        table.on('tool(billTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'detail') {
+                $.get('/api/canteen/outbound/detail', {id: row.id}, function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
+                    openForm(res.data.bill, res.data.items);
+                });
+            } else if (obj.event === 'post') {
+                layer.confirm('确认单据「' + row.outNo + '」出库？将按加权平均单价扣减库存。', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/outbound/post', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? res.data : (res.msg || '操作失败'));
+                        table.reload('billTable');
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除单据「' + row.outNo + '」？', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/outbound/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('billTable');
+                    });
+                });
+            }
+        });
+
+        var itemIns = table.render({
+            elem: '#itemTable', data: [], page: false, limit: 100,
+            cols: [[
+                {field: 'materialName', title: '物料名称', minWidth: 140},
+                {field: 'spec', title: '规格', width: 100},
+                {field: 'unit', title: '单位', width: 70, align: 'center'},
+                {field: 'quantity', title: '数量', width: 110, align: 'right',
+                    templet: function (r) {
+                        return '<input class="layui-input i-qty" data-i="' + r.rowIndex
+                                + '" value="' + r.quantity + '" style="height:26px;text-align:right">';
+                    }},
+                {field: 'unitPrice', title: '加权单价(元)', width: 120, align: 'right',
+                    templet: function (r) { return price(r.unitPrice); }},
+                {field: 'amount', title: '出库金额(元)', width: 130, align: 'right',
+                    templet: function (r) {
+                        return '<span style="font-weight:600">' + money(r.amount) + '</span>';
+                    }},
+                {title: '操作', width: 80, align: 'center',
+                    templet: function (r) {
+                        return '<a class="layui-btn layui-btn-xs layui-btn-danger i-del" data-i="'
+                                + r.rowIndex + '">删除</a>';
+                    }}
+            ]],
+            done: function () { calcSum(); }
+        });
+
+        function calcSum() {
+            var total = 0;
+            items.forEach(function (it) {
+                it.amount = Number((it.quantity * it.unitPrice).toFixed(2));
+                total += it.amount;
+            });
+            $('#itemCount').text(items.length);
+            $('#sumTotal').text(money(total));
+        }
+
+        function reloadItems() {
+            items.forEach(function (it, k) { it.rowIndex = k; });
+            itemIns.reload({data: items});
+        }
+
+        // layui 的下拉要用 form.on('select(filter)') 监听，直接绑原生 change 在部分版本不触发
+        form.on('select(itemMaterial)', function (data) {
+            var s = findStock(data.value);
+            $('#stockTip').text(s
+                    ? '加权单价 ' + Number(s.avgPrice || 0).toFixed(4) + ' 元 / 结存 '
+                        + Number(s.quantity || 0) + ' ' + (s.unit || '')
+                    : '该物料暂无库存记录，请先办理入库');
+        });
+
+        function findStock(id) {
+            var hit = null;
+            stocks.forEach(function (s) { if (String(s.materialId) === String(id)) hit = s; });
+            return hit;
+        }
+
+        $('#addItemBtn').on('click', function () {
+            var mid = $('#itemMaterial').val();
+            if (!mid) { layer.msg('请选择物料'); return; }
+            var s = findStock(mid);
+            if (!s) { layer.msg('库存中暂无该物料，请先办理入库'); return; }
+            var qty = Number($('#itemQty').val() || 0);
+            if (qty <= 0) { layer.msg('数量必须大于 0'); return; }
+            items.push({
+                materialId: s.materialId, materialCode: s.materialCode, materialName: s.materialName,
+                category: s.category, spec: s.spec, unit: s.unit,
+                quantity: qty, unitPrice: Number(s.avgPrice || 0), amount: 0
+            });
+            $('#itemQty').val('');
+            reloadItems();
+        });
+
+        $('#clearItemBtn').on('click', function () { items = []; reloadItems(); });
+
+        $(document).on('change', '.i-qty', function () {
+            items[Number($(this).data('i'))].quantity = Number($(this).val() || 0);
+            reloadItems();
+        });
+        $(document).on('click', '.i-del', function () {
+            items.splice(Number($(this).data('i')), 1);
+            reloadItems();
+        });
+
+        function openForm(bill, billItems) {
+            items = [];
+            if (billItems) billItems.forEach(function (it) { items.push($.extend({}, it)); });
+            var d = bill || {};
+            if (!d.id) {
+                $.ajax({
+                    url: '/api/canteen/outbound/next-no', async: false,
+                    success: function (res) { $('#billNo').val(res.code === 0 ? res.data : ''); }
+                });
+                $('#billDate').val(new Date().toISOString().slice(0, 10));
+            }
+            form.val('billForm', {
+                id: d.id || '', outNo: d.outNo || $('#billNo').val(),
+                outType: d.outType || '职工餐', windowName: d.windowName || '职工餐厅',
+                deptName: d.deptName || '', peopleCount: d.peopleCount || 0,
+                receiver: d.receiver || '', handler: d.handler || '',
+                status: d.status || '草稿', remark: d.remark || ''
+            });
+            if (d.outDate) $('#billDate').val(d.outDate);
+            reloadItems();
+            idx = layer.open({
+                type: 1, title: bill && bill.id ? '领用出库单 ' + bill.outNo : '新增领用出库单',
+                area: ['1120px', '600px'], content: $('#formWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#cancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doSubmit)', function (obj) {
+            if (items.length === 0) { layer.msg('请至少添加一条明细'); return false; }
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.peopleCount = f.peopleCount === '' ? 0 : Number(f.peopleCount);
+            var payload = items.map(function (it) {
+                return {
+                    id: it.id || null, materialId: it.materialId, materialCode: it.materialCode,
+                    materialName: it.materialName, category: it.category, spec: it.spec, unit: it.unit,
+                    quantity: Number(it.quantity || 0), unitPrice: Number(it.unitPrice || 0)
+                };
+            });
+            $.ajax({
+                url: '/api/canteen/outbound/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify({bill: f, items: payload}),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('billTable');
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

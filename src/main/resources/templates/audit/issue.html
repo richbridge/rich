@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>问题整改管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-header">
+            问题整改台账
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">
+                全流程跟踪问题整改：录入 → 整改 → 销号；过整改期限未销号自动标记逾期
+            </span>
+        </div>
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:200px;margin-bottom:0">
+                    <select name="projectId" id="projectSel">
+                        <option value="">全部项目</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:150px;margin-bottom:0">
+                    <select name="unitId" id="unitSel">
+                        <option value="">全部单位</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:150px;margin-bottom:0">
+                    <select name="issueType">
+                        <option value="">全部问题类型</option>
+                        <option value="税务、专利管理">税务、专利管理</option>
+                        <option value="财务管理">财务管理</option>
+                        <option value="采购管理">采购管理</option>
+                        <option value="食堂管理">食堂管理</option>
+                        <option value="其他业务管理">其他业务管理</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:140px;margin-bottom:0">
+                    <select name="progress" id="progressSel">
+                        <option value="">全部整改情况</option>
+                        <option value="已整改">已整改</option>
+                        <option value="持续整改">持续整改</option>
+                        <option value="整改中">整改中</option>
+                        <option value="已移交，整改中">已移交，整改中</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:130px;margin-bottom:0">
+                    <select name="rectifyType">
+                        <option value="">全部整改类型</option>
+                        <option value="立行立改">立行立改</option>
+                        <option value="限期整改">限期整改</option>
+                        <option value="持续整改">持续整改</option>
+                        <option value="分阶段整改">分阶段整改</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status" id="statusSel">
+                        <option value="">全部状态</option>
+                        <option value="未销号">未销号</option>
+                        <option value="已销号">已销号</option>
+                        <option value="逾期">逾期</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:200px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 表述 / 项目 / 责任人"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">查询</button>
+                <button type="reset" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="issueTable" lay-filter="issueTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="issueToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>录入问题
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="issueRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="view">详情</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{#  if(d.status === '已销号'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="unclose">取消销号</a>
+    {{#  } else { }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="close">销号</a>
+    {{#  } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script type="text/html" id="issueDetailTpl">
+    <div style="padding:16px 18px;line-height:1.9;font-size:13px">
+        <div style="margin-bottom:10px">
+            <span class="layui-badge layui-bg-blue">{{ d.issueType || '未分类' }}</span>
+            <span style="margin-left:8px;color:#8a9099">{{ d.projectName || '' }} · {{ d.checkPeriod || '' }}</span>
+        </div>
+        <div><b>问题内容：</b>{{ d.description || '' }}</div>
+        <div><b>相关建议：</b>{{ d.suggestion || '—' }}</div>
+        <div><b>整改方案：</b>{{ d.rectifyPlan || '—' }}</div>
+        <div><b>整改时限：</b>{{ d.deadlineText || d.dueDate || '—' }}</div>
+        <div><b>整改责任人：</b>{{ d.owner || '—' }}</div>
+        <div><b>整改情况：</b>{{ d.progress || '—' }}（{{ d.status || '' }}{{ d.closedDate ? ' · 销号 ' + d.closedDate : '' }}）</div>
+        <div><b>责任单位：</b>{{ d.unitName || '—' }}</div>
+        <div><b>涉及金额：</b>{{ d.amount ? Number(d.amount).toFixed(2) + ' 元' : '—' }}</div>
+        <div><b>备注：</b>{{ d.remark || '—' }}</div>
+    </div>
+</script>
+
+<div id="issueFormWrap" style="display: none;">
+    <form class="layui-form" id="issueForm" lay-filter="issueForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审计项目</label>
+                    <div class="layui-input-block">
+                        <select name="projectId" id="formProjectSel" lay-verify="required"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">问题编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="issueNo" placeholder="如 001" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">责任单位</label>
+                    <div class="layui-input-block">
+                        <select name="unitId" id="formUnitSel"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">问题类型</label>
+                    <div class="layui-input-block">
+                        <select name="issueType" id="formIssueTypeSel"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">问题内容</label>
+            <div class="layui-input-block">
+                <textarea name="description" lay-verify="required" placeholder="问题的具体内容"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">相关建议</label>
+            <div class="layui-input-block">
+                <textarea name="suggestion" placeholder="检查（审计）方给出的整改建议"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">整改方案</label>
+            <div class="layui-input-block">
+                <textarea name="rectifyPlan" placeholder="被检查单位拟采取 / 已采取的整改措施"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">涉及金额</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="amount" step="0.01" placeholder="元" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改时限</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="deadlineText" placeholder="如 2026-08-10 或 持续整改"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改期限</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dueDate" id="dueDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改情况</label>
+                    <div class="layui-input-block">
+                        <select name="progress">
+                            <option value="已整改">已整改</option>
+                            <option value="持续整改">持续整改</option>
+                            <option value="整改中">整改中</option>
+                            <option value="已移交，整改中">已移交，整改中</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="未销号">未销号</option>
+                            <option value="已销号">已销号</option>
+                            <option value="逾期">逾期</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">销号日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="closedDate" id="closedDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改类型</label>
+                    <div class="layui-input-block">
+                        <select name="rectifyType">
+                            <option value="限期整改">限期整改</option>
+                            <option value="立行立改">立行立改</option>
+                            <option value="持续整改">持续整改</option>
+                            <option value="分阶段整改">分阶段整改</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改责任人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="owner" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">发现期间</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checkPeriod" placeholder="如 2026年二季度" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md8">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">问责人次</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="punishCount" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="issueSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="issueCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'laytpl', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var laytpl = layui.laytpl;
+        var $ = layui.jquery;
+        var layerIndex = null;
+
+        laydate.render({elem: '#dueDate', type: 'date'});
+        laydate.render({elem: '#closedDate', type: 'date'});
+
+        /** 支持从总览页带参数跳转：/audit/issue?projectId=1&status=逾期 */
+        function query(name) {
+            var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+        var defaultProjectId = query('projectId');
+        var defaultStatus = query('status');
+        var defaultProgress = query('progress');
+
+        var ISSUE_TYPES = ['税务、专利管理', '财务管理', '采购管理', '食堂管理', '其他业务管理', '其他'];
+
+        // 项目下拉
+        $.get('/api/audit/project/all', function (res) {
+            var list = res.data || [];
+            var html = '<option value="">全部项目</option>';
+            var formHtml = '';
+            list.forEach(function (p) {
+                html += '<option value="' + p.id + '">' + esc(p.name) + '</option>';
+                formHtml += '<option value="' + p.id + '">' + esc(p.name) + '</option>';
+            });
+            $('#projectSel').html(html);
+            $('#formProjectSel').html(formHtml);
+            if (defaultProjectId) {
+                $('#projectSel').val(defaultProjectId);
+                $('#formProjectSel').val(defaultProjectId);
+            }
+            form.render('select');
+        });
+
+        // 单位下拉
+        $.get('/api/audit/unit/all', function (res) {
+            var html = '<option value="">全部单位</option>';
+            var formHtml = '<option value="">请选择</option>';
+            (res.data || []).forEach(function (u) {
+                html += '<option value="' + u.id + '">' + esc(u.name) + '</option>';
+                formHtml += '<option value="' + u.id + '">' + esc(u.name) + '</option>';
+            });
+            $('#unitSel').html(html);
+            $('#formUnitSel').html(formHtml);
+            form.render('select');
+        });
+
+        // 问题类型下拉（表单里可自由录入，这里给出常用项）
+        var typeHtml = ISSUE_TYPES.map(function (n) {
+            return '<option value="' + n + '">' + n + '</option>';
+        }).join('');
+        $('#formIssueTypeSel').html(typeHtml);
+        if (defaultStatus) {
+            $('#statusSel').val(defaultStatus);
+        }
+        if (defaultProgress) {
+            $('#progressSel').val(defaultProgress);
+        }
+        form.render();
+
+        table.render({
+            elem: '#issueTable',
+            url: '/api/audit/issue/list',
+            method: 'get',
+            where: {
+                projectId: defaultProjectId || '',
+                status: defaultStatus || '',
+                progress: defaultProgress || ''
+            },
+            toolbar: '#issueToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50, 100],
+            cols: [[
+                {field: 'issueNo', title: '序号', width: 70, align: 'center'},
+                {field: 'issueType', title: '问题类型', width: 130},
+                {field: 'description', title: '问题内容', minWidth: 320, templet: cut('description', 60)},
+                {field: 'suggestion', title: '相关建议', minWidth: 240, hide: true, templet: cut('suggestion', 40)},
+                {field: 'rectifyPlan', title: '整改方案', minWidth: 220, templet: cut('rectifyPlan', 40)},
+                {field: 'deadlineText', title: '整改时限', width: 110, align: 'center'},
+                {field: 'owner', title: '整改责任人', width: 120},
+                {field: 'progress', title: '整改情况', width: 120, align: 'center',
+                    templet: function (r) {
+                        var p = r.progress || '—';
+                        var cls = p === '已整改' ? 'layui-bg-green'
+                            : (p === '持续整改' ? 'layui-bg-blue' : 'layui-bg-orange');
+                        return '<span class="layui-badge ' + cls + '">' + esc(p) + '</span>';
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        if (r.status === '已销号') return '<span class="layui-badge layui-bg-green">已销号</span>';
+                        if (r.status === '逾期') return '<span class="layui-badge layui-bg-red">逾期</span>';
+                        return '<span class="layui-badge layui-bg-blue">未销号</span>';
+                    }},
+                {field: 'unitName', title: '责任单位', width: 110},
+                {field: 'checkPeriod', title: '发现期间', width: 110, hide: true},
+                {field: 'amount', title: '涉及金额(元)', width: 120, align: 'right', sort: true,
+                    templet: function (r) { return num(r.amount, 2); }},
+                {title: '操作', width: 260, fixed: 'right', toolbar: '#issueRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('issueTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('issueTable', {
+                    where: {
+                        projectId: '', unitId: '', issueType: '', progress: '',
+                        rectifyType: '', status: '', keywords: ''
+                    },
+                    page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        table.on('toolbar(issueTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(issueTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'view') {
+                openDetail(row);
+            } else if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'close') {
+                $.post('/api/audit/issue/close', {id: row.id, closed: 1}, function (res) {
+                    if (res.code === 0) {
+                        layer.msg('已销号', {icon: 1});
+                        table.reload('issueTable');
+                    } else {
+                        layer.msg(res.msg || '操作失败');
+                    }
+                });
+            } else if (obj.event === 'unclose') {
+                $.post('/api/audit/issue/close', {id: row.id, closed: 0}, function (res) {
+                    if (res.code === 0) {
+                        layer.msg('已取消销号', {icon: 1});
+                        table.reload('issueTable');
+                    } else {
+                        layer.msg(res.msg || '操作失败');
+                    }
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除该问题吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/audit/issue/delete', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                            table.reload('issueTable');
+                        } else {
+                            layer.msg(res.msg || '删除失败');
+                        }
+                    });
+                });
+            }
+        });
+
+        /** 台账文本较长，列表里截断显示，鼠标悬停可看全文，点「详情」看全部字段。 */
+        function cut(field, len) {
+            return function (r) {
+                var v = r[field] || '';
+                if (v.length <= len) {
+                    return esc(v);
+                }
+                return '<span title="' + esc(v) + '">' + esc(v.substring(0, len)) + '…</span>';
+            };
+        }
+
+        function openDetail(row) {
+            var html = laytpl($('#issueDetailTpl').html()).render(row || {});
+            layer.open({
+                type: 1,
+                title: '问题详情（' + (row.issueNo || '') + '）',
+                area: ['760px', '520px'],
+                content: html
+            });
+        }
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('issueForm', {
+                id: d.id || '',
+                projectId: d.projectId || defaultProjectId || '',
+                issueNo: d.issueNo || '',
+                unitId: d.unitId || '',
+                issueType: d.issueType || '财务管理',
+                description: d.description || '',
+                suggestion: d.suggestion || '',
+                rectifyPlan: d.rectifyPlan || '',
+                amount: d.amount === null || d.amount === undefined ? '' : d.amount,
+                deadlineText: d.deadlineText || '',
+                dueDate: d.dueDate || '',
+                progress: d.progress || '整改中',
+                status: d.status || '未销号',
+                closedDate: d.closedDate || '',
+                rectifyType: d.rectifyType || '限期整改',
+                owner: d.owner || '',
+                checkPeriod: d.checkPeriod || '',
+                punishCount: d.punishCount || 0,
+                remark: d.remark || ''
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑问题' : '录入问题',
+                area: ['920px', '700px'],
+                content: $('#issueFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        form.on('submit(issueSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                projectId: f.projectId ? Number(f.projectId) : null,
+                issueNo: f.issueNo,
+                unitId: f.unitId ? Number(f.unitId) : null,
+                issueType: f.issueType,
+                nature: f.issueType,
+                description: f.description,
+                suggestion: f.suggestion,
+                rectifyPlan: f.rectifyPlan,
+                amount: f.amount === '' ? 0 : Number(f.amount),
+                rectifyType: f.rectifyType,
+                deadlineText: f.deadlineText,
+                progress: f.progress,
+                checkPeriod: f.checkPeriod,
+                status: f.status,
+                dueDate: f.dueDate || null,
+                closedDate: f.closedDate || null,
+                owner: f.owner,
+                measure: f.rectifyPlan,
+                punishCount: f.punishCount === '' ? 0 : Number(f.punishCount),
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/audit/issue/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('issueTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#issueCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+
+        function num(v, n) {
+            if (v === null || v === undefined || v === '') return '';
+            var x = Number(v);
+            return isNaN(x) ? '' : x.toFixed(n);
+        }
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>课程管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:220px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称 / 讲师"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:140px;margin-bottom:0">
+                    <select name="category">
+                        <option value="">全部分类</option>
+                        <option value="安全环保">安全环保</option>
+                        <option value="财务税务">财务税务</option>
+                        <option value="生产技术">生产技术</option>
+                        <option value="设备管理">设备管理</option>
+                        <option value="职业素养">职业素养</option>
+                        <option value="入职培训">入职培训</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="courseType">
+                        <option value="">全部类型</option>
+                        <option value="点播">点播</option>
+                        <option value="直播">直播</option>
+                        <option value="面授">面授</option>
+                        <option value="混合">混合</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="草稿">草稿</option>
+                        <option value="已发布">已发布</option>
+                        <option value="已下架">已下架</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="courseTable" lay-filter="courseTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="courseToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增课程
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="courseRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{#  if(d.status === '已发布'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="offline">下架</a>
+    {{#  } else { }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="publish">发布</a>
+    {{#  } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="courseFormWrap" style="display: none;">
+    <form class="layui-form" id="courseForm" lay-filter="courseForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">课程编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="courseNo" placeholder="如 KC2026-001" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">课程分类</label>
+                    <div class="layui-input-block">
+                        <select name="category">
+                            <option value="安全环保">安全环保</option>
+                            <option value="财务税务">财务税务</option>
+                            <option value="生产技术">生产技术</option>
+                            <option value="设备管理">设备管理</option>
+                            <option value="职业素养">职业素养</option>
+                            <option value="入职培训">入职培训</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">课程名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">课程类型</label>
+                    <div class="layui-input-block">
+                        <select name="courseType">
+                            <option value="点播">点播</option>
+                            <option value="直播">直播</option>
+                            <option value="面授">面授</option>
+                            <option value="混合">混合</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">讲师</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="teacher" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">讲师单位</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="teacherOrg" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">时长(分钟)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="duration" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">学分</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="credit" step="0.5" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">难度</label>
+                    <div class="layui-input-block">
+                        <select name="level">
+                            <option value="初级">初级</option>
+                            <option value="中级">中级</option>
+                            <option value="高级">高级</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">课件地址</label>
+            <div class="layui-input-block">
+                <input type="text" name="url" placeholder="视频 / 课件链接" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">适用对象</label>
+            <div class="layui-input-block">
+                <input type="text" name="target" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="草稿">草稿</option>
+                            <option value="已发布">已发布</option>
+                            <option value="已下架">已下架</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">需要考试</label>
+                    <div class="layui-input-block">
+                        <select name="examFlag">
+                            <option value="1">是</option>
+                            <option value="0">否</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">课程简介</label>
+            <div class="layui-input-block">
+                <textarea name="intro" placeholder="课程主要内容与目标" class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="courseSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="courseCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        var layerIndex = null;
+
+        table.render({
+            elem: '#courseTable',
+            url: '/api/train/course/list',
+            method: 'get',
+            toolbar: '#courseToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'courseNo', title: '课程编号', width: 120, sort: true},
+                {field: 'name', title: '课程名称', minWidth: 230},
+                {field: 'category', title: '分类', width: 100},
+                {field: 'courseType', title: '类型', width: 80, align: 'center'},
+                {field: 'teacher', title: '讲师', width: 90},
+                {field: 'teacherOrg', title: '讲师单位', width: 110},
+                {field: 'duration', title: '时长(分)', width: 90, align: 'center', sort: true},
+                {field: 'credit', title: '学分', width: 70, align: 'center'},
+                {field: 'level', title: '难度', width: 80, align: 'center'},
+                {field: 'learnCount', title: '学习人次', width: 100, align: 'center', sort: true},
+                {field: 'examFlag', title: '需考试', width: 80, align: 'center',
+                    templet: function (r) {
+                        return r.examFlag === 1 ? '<span class="layui-badge layui-bg-blue">是</span>' : '否';
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        if (r.status === '已发布') return '<span class="layui-badge layui-bg-green">已发布</span>';
+                        if (r.status === '已下架') return '<span class="layui-badge">已下架</span>';
+                        return '<span class="layui-badge layui-bg-orange">草稿</span>';
+                    }},
+                {title: '操作', width: 190, fixed: 'right', toolbar: '#courseRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('courseTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        table.on('toolbar(courseTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(courseTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'publish' || obj.event === 'offline') {
+                var published = obj.event === 'publish' ? 1 : 0;
+                $.post('/api/train/course/publish', {id: row.id, published: published}, function (res) {
+                    if (res.code === 0) {
+                        layer.msg('操作成功', {icon: 1});
+                        table.reload('courseTable');
+                    } else {
+                        layer.msg(res.msg || '操作失败');
+                    }
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除课程「' + esc(row.name) + '」吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/train/course/delete', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                            table.reload('courseTable');
+                        } else {
+                            layer.msg(res.msg || '删除失败');
+                        }
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('courseForm', {
+                id: d.id || '',
+                courseNo: d.courseNo || '',
+                name: d.name || '',
+                category: d.category || '安全环保',
+                courseType: d.courseType || '面授',
+                teacher: d.teacher || '',
+                teacherOrg: d.teacherOrg || '',
+                duration: d.duration === null || d.duration === undefined ? '' : d.duration,
+                credit: d.credit === null || d.credit === undefined ? '' : d.credit,
+                level: d.level || '初级',
+                url: d.url || '',
+                target: d.target || '',
+                status: d.status || '草稿',
+                examFlag: d.examFlag === 1 ? '1' : '0',
+                remark: d.remark || '',
+                intro: d.intro || ''
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑课程' : '新增课程',
+                area: ['900px', '620px'],
+                content: $('#courseFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        form.on('submit(courseSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                courseNo: f.courseNo,
+                name: f.name,
+                category: f.category,
+                courseType: f.courseType,
+                teacher: f.teacher,
+                teacherOrg: f.teacherOrg,
+                duration: f.duration === '' ? 0 : Number(f.duration),
+                credit: f.credit === '' ? 0 : Number(f.credit),
+                level: f.level,
+                url: f.url,
+                target: f.target,
+                status: f.status,
+                examFlag: Number(f.examFlag),
+                remark: f.remark,
+                intro: f.intro
+            };
+            $.ajax({
+                url: '/api/train/course/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('courseTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#courseCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

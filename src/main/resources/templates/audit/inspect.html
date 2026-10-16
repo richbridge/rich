@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>检查任务管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+        .finding-wrap { padding: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-header">
+            检查任务
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">
+                跟踪检查 / 专项检查 / 日常检查 / 整改核查；检查发现的问题逐条登记并跟踪整改
+            </span>
+        </div>
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:220px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称 / 单位 / 检查人"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:140px;margin-bottom:0">
+                    <select name="inspectType">
+                        <option value="">全部类型</option>
+                        <option value="跟踪检查">跟踪检查</option>
+                        <option value="专项检查">专项检查</option>
+                        <option value="日常检查">日常检查</option>
+                        <option value="整改核查">整改核查</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="待检查">待检查</option>
+                        <option value="检查中">检查中</option>
+                        <option value="已完成">已完成</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">查询</button>
+                <button type="reset" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="taskTable" lay-filter="taskTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="taskToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增检查任务
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="taskRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="findings">发现问题</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{#  if(d.status !== '已完成'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="finish">完成</a>
+    {{#  } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 检查任务表单 -->
+<div id="taskFormWrap" style="display: none;">
+    <form class="layui-form" id="taskForm" lay-filter="taskForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">任务编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="taskNo" placeholder="如 JC2026-001" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">检查类型</label>
+                    <div class="layui-input-block">
+                        <select name="inspectType">
+                            <option value="跟踪检查">跟踪检查</option>
+                            <option value="专项检查">专项检查</option>
+                            <option value="日常检查">日常检查</option>
+                            <option value="整改核查">整改核查</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">检查名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" placeholder="如 三季度安全环保检查"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">关联审计项目</label>
+                    <div class="layui-input-block">
+                        <select name="projectId" id="formProjectSel"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">被检查单位</label>
+                    <div class="layui-input-block">
+                        <select name="unitName" id="formUnitSel"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">检查部门</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dept" placeholder="如 审计部" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">检查人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="inspector" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计划日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="planDate" id="planDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">实际日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="actualDate" id="actualDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="待检查">待检查</option>
+                            <option value="检查中">检查中</option>
+                            <option value="已完成">已完成</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">检查结果</label>
+            <div class="layui-input-block">
+                <textarea name="result" placeholder="结论性描述，如查出隐患 3 项，现场整改 1 项"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="taskSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="taskCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 发现问题列表（弹窗内容） -->
+<div id="findingWrap" style="display: none;">
+    <div class="finding-wrap">
+        <table class="layui-hide" id="findingTable" lay-filter="findingTable"></table>
+    </div>
+</div>
+
+<script type="text/html" id="findingToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>登记问题
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="findingRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{#  if(d.status !== '已整改'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="done">已整改</a>
+    {{#  } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 发现问题表单 -->
+<div id="findingFormWrap" style="display: none;">
+    <form class="layui-form" id="findingForm" lay-filter="findingForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+        <input type="hidden" name="taskId">
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">问题描述</label>
+            <div class="layui-input-block">
+                <textarea name="title" lay-verify="required" placeholder="检查发现的具体问题"
+                          class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">问题类别</label>
+                    <div class="layui-input-block">
+                        <select name="category">
+                            <option value="资金管理">资金管理</option>
+                            <option value="物资采购">物资采购</option>
+                            <option value="资产管理">资产管理</option>
+                            <option value="安全环保">安全环保</option>
+                            <option value="合同管理">合同管理</option>
+                            <option value="成本控制">成本控制</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">严重程度</label>
+                    <div class="layui-input-block">
+                        <select name="severity">
+                            <option value="一般">一般</option>
+                            <option value="较重">较重</option>
+                            <option value="严重">严重</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">涉及金额</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="amount" step="0.01" placeholder="元" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改期限</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dueDate" id="findingDueDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="未整改">未整改</option>
+                            <option value="整改中">整改中</option>
+                            <option value="已整改">已整改</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">被检查单位</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="unitName" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">整改责任人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="owner" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">相关建议</label>
+            <div class="layui-input-block">
+                <textarea name="suggestion" placeholder="检查方给出的整改建议" class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">整改要求</label>
+            <div class="layui-input-block">
+                <textarea name="requirement" placeholder="如 限期整改并提交佐证材料" class="layui-textarea"></textarea>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="findingSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="findingCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+
+        var taskLayerIndex = null;
+        var findingLayerIndex = null;
+        var formLayerIndex = null;
+        var currentTaskId = null;
+        var findingRendered = false;
+
+        laydate.render({elem: '#planDate', type: 'date'});
+        laydate.render({elem: '#actualDate', type: 'date'});
+        laydate.render({elem: '#findingDueDate', type: 'date'});
+
+        // ---------------------------------------------------------- 下拉数据
+        $.get('/api/audit/project/all', function (res) {
+            var html = '<option value="">不关联</option>';
+            (res.data || []).forEach(function (p) {
+                html += '<option value="' + p.id + '">' + esc(p.name) + '</option>';
+            });
+            $('#formProjectSel').html(html);
+            form.render('select');
+        });
+        $.get('/api/audit/unit/all', function (res) {
+            var html = '<option value="">请选择</option>';
+            (res.data || []).forEach(function (u) {
+                html += '<option value="' + esc(u.name) + '">' + esc(u.name) + '</option>';
+            });
+            $('#formUnitSel').html(html);
+            form.render('select');
+        });
+
+        // ---------------------------------------------------------- 任务表
+        table.render({
+            elem: '#taskTable',
+            url: '/api/inspect/task/list',
+            method: 'get',
+            toolbar: '#taskToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'taskNo', title: '任务编号', width: 120, sort: true},
+                {field: 'name', title: '检查名称', minWidth: 200},
+                {field: 'inspectType', title: '检查类型', width: 100},
+                {field: 'projectName', title: '关联审计项目', width: 190},
+                {field: 'unitName', title: '被检查单位', width: 110},
+                {field: 'dept', title: '检查部门', width: 100},
+                {field: 'inspector', title: '检查人', width: 90},
+                {field: 'planDate', title: '计划日期', width: 110, align: 'center', sort: true},
+                {field: 'actualDate', title: '实际日期', width: 110, align: 'center'},
+                {field: 'findingCount', title: '发现问题', width: 90, align: 'center',
+                    templet: function (r) {
+                        return r.findingCount > 0
+                            ? '<span style="color:#e13c3c;font-weight:600">' + r.findingCount + '</span>'
+                            : '0';
+                    }},
+                {field: 'rectifiedCount', title: '已整改', width: 80, align: 'center'},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        if (r.status === '已完成') return '<span class="layui-badge layui-bg-green">已完成</span>';
+                        if (r.status === '检查中') return '<span class="layui-badge layui-bg-blue">检查中</span>';
+                        return '<span class="layui-badge layui-bg-gray">待检查</span>';
+                    }},
+                {field: 'result', title: '检查结果', minWidth: 220},
+                {title: '操作', width: 250, fixed: 'right', toolbar: '#taskRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('taskTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        $('#resetBtn').on('click', function () {
+            setTimeout(function () {
+                table.reload('taskTable', {
+                    where: {keywords: '', inspectType: '', status: ''},
+                    page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        table.on('toolbar(taskTable)', function (obj) {
+            if (obj.event === 'add') openTaskForm(null);
+        });
+
+        table.on('tool(taskTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openTaskForm(row);
+            } else if (obj.event === 'findings') {
+                openFindings(row);
+            } else if (obj.event === 'finish') {
+                $.post('/api/inspect/task/finish', {id: row.id}, function (res) {
+                    if (res.code === 0) {
+                        layer.msg('已标记完成', {icon: 1});
+                        table.reload('taskTable');
+                    } else {
+                        layer.msg(res.msg || '操作失败');
+                    }
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除检查任务「' + esc(row.name) + '」吗？<br>其下登记的问题也会一并删除。',
+                    {icon: 3, title: '提示'}, function (i) {
+                        layer.close(i);
+                        $.post('/api/inspect/task/delete', {id: row.id}, function (res) {
+                            if (res.code === 0) {
+                                layer.msg('删除成功', {icon: 1});
+                                table.reload('taskTable');
+                            } else {
+                                layer.msg(res.msg || '删除失败');
+                            }
+                        });
+                    });
+            }
+        });
+
+        // ---------------------------------------------------------- 任务表单
+        function openTaskForm(row) {
+            var d = row || {};
+            form.val('taskForm', {
+                id: d.id || '',
+                taskNo: d.taskNo || '',
+                name: d.name || '',
+                inspectType: d.inspectType || '跟踪检查',
+                projectId: d.projectId || '',
+                unitName: d.unitName || '',
+                dept: d.dept || '',
+                inspector: d.inspector || '',
+                planDate: d.planDate || '',
+                actualDate: d.actualDate || '',
+                status: d.status || '待检查',
+                result: d.result || '',
+                remark: d.remark || ''
+            });
+            taskLayerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑检查任务' : '新增检查任务',
+                area: ['860px', '620px'],
+                content: $('#taskFormWrap'),
+                end: function () { taskLayerIndex = null; }
+            });
+        }
+
+        form.on('submit(taskSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                taskNo: f.taskNo,
+                name: f.name,
+                inspectType: f.inspectType,
+                projectId: f.projectId ? Number(f.projectId) : null,
+                unitName: f.unitName,
+                dept: f.dept,
+                inspector: f.inspector,
+                planDate: f.planDate || null,
+                actualDate: f.actualDate || null,
+                status: f.status,
+                result: f.result,
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/inspect/task/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(taskLayerIndex);
+                        table.reload('taskTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#taskCancel').on('click', function () {
+            if (taskLayerIndex !== null) layer.close(taskLayerIndex);
+        });
+
+        // ---------------------------------------------------------- 发现问题
+        function openFindings(row) {
+            currentTaskId = row.id;
+            if (findingRendered) {
+                table.reload('findingTable', {where: {taskId: currentTaskId}, page: {curr: 1}});
+            } else {
+                table.render({
+                    elem: '#findingTable',
+                    url: '/api/inspect/finding/list',
+                    method: 'get',
+                    where: {taskId: currentTaskId},
+                    toolbar: '#findingToolbar',
+                    page: true,
+                    limit: 10,
+                    limits: [10, 20, 50],
+                    cols: [[
+                        {field: 'unitName', title: '被检查单位', width: 110},
+                        {field: 'category', title: '问题类别', width: 110},
+                        {field: 'title', title: '问题描述', minWidth: 300,
+                            templet: function (r) {
+                                var v = r.title || '';
+                                return v.length > 60
+                                    ? '<span title="' + esc(v) + '">' + esc(v.substring(0, 60)) + '…</span>'
+                                    : esc(v);
+                            }},
+                        {field: 'suggestion', title: '相关建议', minWidth: 220, hide: true,
+                            templet: function (r) {
+                                var v = r.suggestion || '';
+                                return v.length > 40
+                                    ? '<span title="' + esc(v) + '">' + esc(v.substring(0, 40)) + '…</span>'
+                                    : esc(v);
+                            }},
+                        {field: 'severity', title: '严重程度', width: 90, align: 'center',
+                            templet: function (r) {
+                                if (r.severity === '严重') return '<span class="layui-badge layui-bg-red">严重</span>';
+                                if (r.severity === '较重') return '<span class="layui-badge layui-bg-orange">较重</span>';
+                                return '<span class="layui-badge layui-bg-gray">一般</span>';
+                            }},
+                        {field: 'amount', title: '涉及金额(元)', width: 110, align: 'right',
+                            templet: function (r) { return num(r.amount, 2); }},
+                        {field: 'status', title: '状态', width: 90, align: 'center',
+                            templet: function (r) {
+                                if (r.status === '已整改') return '<span class="layui-badge layui-bg-green">已整改</span>';
+                                if (r.status === '整改中') return '<span class="layui-badge layui-bg-blue">整改中</span>';
+                                return '<span class="layui-badge layui-bg-red">未整改</span>';
+                            }},
+                        {field: 'dueDate', title: '整改期限', width: 110, align: 'center'},
+                        {field: 'owner', title: '整改责任人', width: 110},
+                        {title: '操作', width: 170, fixed: 'right', toolbar: '#findingRowBar'}
+                    ]]
+                });
+                findingRendered = true;
+            }
+            findingLayerIndex = layer.open({
+                type: 1,
+                title: '检查发现问题 — ' + esc(row.name),
+                area: ['1060px', '560px'],
+                content: $('#findingWrap'),
+                end: function () {
+                    findingLayerIndex = null;
+                    table.reload('taskTable');
+                }
+            });
+        }
+
+        table.on('toolbar(findingTable)', function (obj) {
+            if (obj.event === 'add') openFindingForm(null);
+        });
+
+        table.on('tool(findingTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openFindingForm(row);
+            } else if (obj.event === 'done') {
+                saveFinding({
+                    id: row.id,
+                    taskId: row.taskId,
+                    title: row.title,
+                    category: row.category,
+                    severity: row.severity,
+                    amount: row.amount,
+                    unitName: row.unitName,
+                    owner: row.owner,
+                    suggestion: row.suggestion,
+                    requirement: row.requirement,
+                    status: '已整改',
+                    dueDate: row.dueDate
+                }, '已标记整改完成');
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除该问题吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/inspect/finding/delete', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                            table.reload('findingTable');
+                        } else {
+                            layer.msg(res.msg || '删除失败');
+                        }
+                    });
+                });
+            }
+        });
+
+        function openFindingForm(row) {
+            var d = row || {};
+            form.val('findingForm', {
+                id: d.id || '',
+                taskId: d.taskId || currentTaskId,
+                title: d.title || '',
+                category: d.category || '资金管理',
+                severity: d.severity || '一般',
+                amount: d.amount === null || d.amount === undefined ? '' : d.amount,
+                unitName: d.unitName || '',
+                owner: d.owner || '',
+                suggestion: d.suggestion || '',
+                requirement: d.requirement || '',
+                status: d.status || '未整改',
+                dueDate: d.dueDate || ''
+            });
+            formLayerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑发现问题' : '登记发现问题',
+                area: ['820px', '560px'],
+                content: $('#findingFormWrap'),
+                end: function () { formLayerIndex = null; }
+            });
+        }
+
+        form.on('submit(findingSubmit)', function (data) {
+            var f = data.field;
+            saveFinding({
+                id: f.id ? Number(f.id) : null,
+                taskId: f.taskId ? Number(f.taskId) : currentTaskId,
+                title: f.title,
+                category: f.category,
+                severity: f.severity,
+                amount: f.amount === '' ? 0 : Number(f.amount),
+                unitName: f.unitName,
+                owner: f.owner,
+                suggestion: f.suggestion,
+                requirement: f.requirement,
+                status: f.status,
+                dueDate: f.dueDate || null
+            }, '保存成功');
+            return false;
+        });
+
+        function saveFinding(payload, msg) {
+            $.ajax({
+                url: '/api/inspect/finding/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg(msg, {icon: 1});
+                        if (formLayerIndex !== null) {
+                            layer.close(formLayerIndex);
+                            formLayerIndex = null;
+                        }
+                        table.reload('findingTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+        }
+
+        $('#findingCancel').on('click', function () {
+            if (formLayerIndex !== null) layer.close(formLayerIndex);
+        });
+
+        function num(v, n) {
+            if (v === null || v === undefined || v === '') return '';
+            var x = Number(v);
+            return isNaN(x) ? '' : x.toFixed(n);
+        }
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

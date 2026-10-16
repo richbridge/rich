@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>培训总览</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+        .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .kpi-card {
+            flex: 1; min-width: 150px; background: #fff; border-radius: 4px; padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+        }
+        .kpi-label { color: #8a9099; font-size: 13px; }
+        .kpi-value { font-size: 26px; font-weight: 600; color: #1f2329; margin-top: 6px; line-height: 1.2; }
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .chart-box { width: 100%; height: 300px; }
+        .tip-card {
+            background: #fff; border-radius: 4px; padding: 14px 16px; cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: box-shadow .2s;
+        }
+        .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
+        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 6px; }
+        .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 培训 KPI -->
+    <div class="kpi-row rich-card-gap">
+        <div class="kpi-card">
+            <div class="kpi-label">课程总数</div>
+            <div class="kpi-value" id="kpiCourse">-</div>
+            <div class="kpi-sub">已发布 <span id="kpiCoursePub">0</span> 门</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">培训期次</div>
+            <div class="kpi-value" id="kpiPlan">-</div>
+            <div class="kpi-sub">进行中 <span id="kpiPlanRunning">0</span> 期</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">参训人次</div>
+            <div class="kpi-value" id="kpiEnroll">-</div>
+            <div class="kpi-sub">签到率 <span id="kpiSignRate">0</span>%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">合格人次</div>
+            <div class="kpi-value" id="kpiPass" style="color:#18a058">-</div>
+            <div class="kpi-sub">合格率 <span id="kpiPassRate">0</span>%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">累计学时</div>
+            <div class="kpi-value" id="kpiHours">-</div>
+            <div class="kpi-sub">累计学分 <span id="kpiCredit">0</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">考试平均分</div>
+            <div class="kpi-value" id="kpiAvg">-</div>
+            <div class="kpi-sub">已组织考试 <span id="kpiExam">0</span> 场</div>
+        </div>
+    </div>
+
+    <!-- 提醒 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipEnrolling">
+                <div class="tip-title">正在报名</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipEnrollingNum" style="color:#2f7ef7">0</span> 期培训开放报名</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipStarting">
+                <div class="tip-title">近期开班</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipStartingNum" style="color:#ff9f43">0</span> 期 7 天内开班</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipRunning">
+                <div class="tip-title">培训进行中</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipRunningNum" style="color:#18a058">0</span> 期正在培训</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipFailed">
+                <div class="tip-title">考核不合格</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipFailedNum" style="color:#e13c3c">0</span> 人次需补考</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">培训类型分布</div>
+                <div class="layui-card-body">
+                    <div id="typeChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">课程分类分布</div>
+                <div class="layui-card-body">
+                    <div id="cateChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">部门参训情况</div>
+                <div class="layui-card-body">
+                    <div id="deptChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md7">
+            <div class="layui-card">
+                <div class="layui-card-header">月度培训趋势</div>
+                <div class="layui-card-body">
+                    <div id="trendChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md5">
+            <div class="layui-card">
+                <div class="layui-card-header">学习状态分布</div>
+                <div class="layui-card-body">
+                    <div id="statusChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 近期培训 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            培训计划
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">点击「学员」查看该期参训名单</span>
+        </div>
+        <div class="layui-card-body">
+            <table class="layui-hide" id="planTable" lay-filter="planTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="planRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="students">学员</a>
+</script>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        var typeChart = echarts.init(document.getElementById('typeChart'));
+        var cateChart = echarts.init(document.getElementById('cateChart'));
+        var deptChart = echarts.init(document.getElementById('deptChart'));
+        var trendChart = echarts.init(document.getElementById('trendChart'));
+        var statusChart = echarts.init(document.getElementById('statusChart'));
+
+        // ---------------------------------------------------------- 培训计划表
+        table.render({
+            elem: '#planTable',
+            url: '/api/train/plan/list',
+            method: 'get',
+            page: true,
+            limit: 8,
+            limits: [8, 20, 50],
+            cols: [[
+                {field: 'planNo', title: '计划编号', width: 120, sort: true},
+                {field: 'name', title: '培训名称', minWidth: 220},
+                {field: 'planType', title: '培训类型', width: 100},
+                {field: 'courseName', title: '关联课程', minWidth: 180},
+                {field: 'startDate', title: '开始', width: 110, align: 'center'},
+                {field: 'endDate', title: '结束', width: 110, align: 'center'},
+                {field: 'dept', title: '主办部门', width: 110},
+                {field: 'teacher', title: '讲师', width: 90},
+                {field: 'planCount', title: '计划', width: 70, align: 'center'},
+                {field: 'enrollCount', title: '参训', width: 70, align: 'center'},
+                {field: 'passCount', title: '合格', width: 70, align: 'center',
+                    templet: function (r) {
+                        return r.passCount > 0
+                            ? '<span style="color:#18a058;font-weight:600">' + r.passCount + '</span>' : '0';
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已结束' ? 'layui-bg-green'
+                            : (r.status === '进行中' ? 'layui-bg-blue'
+                                : (r.status === '报名中' ? 'layui-bg-orange' : ''));
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 80, fixed: 'right', toolbar: '#planRowBar'}
+            ]]
+        });
+
+        table.on('tool(planTable)', function (obj) {
+            if (obj.event === 'students') {
+                openTab('/train/enroll?planId=' + obj.data.id);
+            }
+        });
+
+        // ---------------------------------------------------------- 统计
+        function load() {
+            $.post('/api/train/refresh-status', function () {
+                $.get('/api/train/overview', function (res) {
+                    if (res.code !== 0) {
+                        layer.msg(res.msg || '统计加载失败');
+                        return;
+                    }
+                    var kpi = res.data.kpi || {};
+                    var ek = res.data.examKpi || {};
+                    $('#kpiCourse').text(kpi.courseCount || 0);
+                    $('#kpiCoursePub').text(kpi.coursePublished || 0);
+                    $('#kpiPlan').text(kpi.planCount || 0);
+                    $('#kpiPlanRunning').text(kpi.planRunning || 0);
+                    $('#kpiEnroll').text(kpi.enrollCount || 0);
+                    $('#kpiSignRate').text(kpi.signRate || 0);
+                    $('#kpiPass').text(kpi.passCount || 0);
+                    $('#kpiPassRate').text(kpi.passRate || 0);
+                    $('#kpiHours').text(kpi.hours || 0);
+                    $('#kpiCredit').text(kpi.credit || 0);
+                    $('#kpiAvg').text(ek.avgScore || 0);
+                    $('#kpiExam').text(ek.examCount || 0);
+
+                    var r = res.data.reminders || {};
+                    $('#tipEnrollingNum').text(r.enrolling || 0);
+                    $('#tipStartingNum').text(r.starting || 0);
+                    $('#tipRunningNum').text(r.running || 0);
+                    $('#tipFailedNum').text(r.failed || 0);
+
+                    renderPie(typeChart, res.data.planTypes || []);
+                    renderPie(statusChart, res.data.enrollStatus || []);
+                    renderBar(cateChart, res.data.categories || []);
+                    renderDept(res.data.deptStats || []);
+                    renderTrend(res.data.trend || []);
+                    table.reload('planTable');
+                });
+            });
+        }
+
+        function renderPie(chart, rows) {
+            chart.setOption({
+                tooltip: {trigger: 'item', formatter: '{b}: {c} ({d}%)'},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                series: [{
+                    type: 'pie',
+                    radius: ['42%', '66%'],
+                    center: ['50%', '45%'],
+                    avoidLabelOverlap: true,
+                    label: {formatter: '{b}\n{c}'},
+                    data: rows.map(function (r) {
+                        return {name: r.name, value: Number(r.value || 0)};
+                    })
+                }],
+                color: ['#2f7ef7', '#18a058', '#ff9f43', '#e13c3c', '#8a9099', '#7c5cff']
+            }, true);
+        }
+
+        function renderBar(chart, rows) {
+            rows = rows.slice(0, 8);
+            chart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                grid: {left: 8, right: 24, top: 16, bottom: 8, containLabel: true},
+                xAxis: {type: 'value', splitLine: {lineStyle: {type: 'dashed'}}},
+                yAxis: {
+                    type: 'category',
+                    data: rows.map(function (r) { return r.name; }).reverse(),
+                    axisLabel: {fontSize: 12}
+                },
+                series: [{
+                    type: 'bar', barWidth: 14,
+                    itemStyle: {color: '#2f7ef7', borderRadius: [0, 3, 3, 0]},
+                    label: {show: true, position: 'right', fontSize: 11, color: '#8a9099'},
+                    data: rows.map(function (r) { return Number(r.value || 0); }).reverse()
+                }]
+            }, true);
+        }
+
+        function renderDept(rows) {
+            rows = rows.slice(0, 8);
+            deptChart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                grid: {left: 8, right: 16, top: 16, bottom: 36, containLabel: true},
+                xAxis: {type: 'category', data: rows.map(function (r) { return r.name; })},
+                yAxis: {type: 'value', splitLine: {lineStyle: {type: 'dashed'}}},
+                series: [
+                    {
+                        name: '参训人次', type: 'bar', barWidth: 16,
+                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return Number(r.total || 0); })
+                    },
+                    {
+                        name: '合格人次', type: 'bar', barWidth: 16,
+                        itemStyle: {color: '#18a058', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return Number(r.passed || 0); })
+                    }
+                ]
+            }, true);
+        }
+
+        function renderTrend(rows) {
+            trendChart.setOption({
+                tooltip: {trigger: 'axis'},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                grid: {left: 8, right: 16, top: 24, bottom: 36, containLabel: true},
+                xAxis: {type: 'category', data: rows.map(function (r) { return r.label; })},
+                yAxis: {type: 'value', splitLine: {lineStyle: {type: 'dashed'}}},
+                series: [
+                    {
+                        name: '开班数', type: 'bar', barWidth: 26,
+                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return Number(r.total || 0); })
+                    },
+                    {
+                        name: '已结束', type: 'line', smooth: true, symbolSize: 7,
+                        itemStyle: {color: '#18a058'},
+                        data: rows.map(function (r) { return Number(r.done || 0); })
+                    },
+                    {
+                        name: '计划参训', type: 'line', smooth: true, symbolSize: 7,
+                        itemStyle: {color: '#ff9f43'},
+                        data: rows.map(function (r) { return Number(r.planned || 0); })
+                    }
+                ]
+            }, true);
+        }
+
+        $('#tipEnrolling').on('click', function () { openTab('/train/plan?status=报名中'); });
+        $('#tipStarting').on('click', function () { openTab('/train/plan'); });
+        $('#tipRunning').on('click', function () { openTab('/train/plan?status=进行中'); });
+        $('#tipFailed').on('click', function () { openTab('/train/enroll?status=不合格'); });
+
+        /** 在主框架里打开新标签页；取不到父窗口 API 时退化为直接跳转。 */
+        function openTab(href) {
+            try {
+                var admin = parent.layui && parent.layui.admin;
+                if (admin && admin.events && admin.events.openTab) {
+                    admin.events.openTab({href: href});
+                    return;
+                }
+                if (admin && admin.openTab) {
+                    admin.openTab({href: href});
+                    return;
+                }
+            } catch (e) {
+                // 非框架环境，直接跳转
+            }
+            location.href = href;
+        }
+
+        window.addEventListener('resize', function () {
+            typeChart.resize();
+            cateChart.resize();
+            deptChart.resize();
+            trendChart.resize();
+            statusChart.resize();
+        });
+
+        load();
+    });
+</script>
+</body>
+</html>

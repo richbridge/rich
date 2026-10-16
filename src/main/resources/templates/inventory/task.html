@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>盘点任务</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .progress-wrap { position: relative; height: 16px; line-height: 16px; background: #eee; border-radius: 8px; }
+        .progress-bar { height: 16px; border-radius: 8px; background: #2f7ef7; }
+        .progress-text { position: absolute; top: 0; left: 0; width: 100%; text-align: center;
+            font-size: 11px; color: #333; }
+        .scope-tip { color: #888; font-size: 12px; margin-left: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="search-bar">
+        <form class="layui-form" lay-filter="searchForm">
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:180px">
+                        <input type="text" name="keywords" placeholder="任务名称 / 单号 / 负责人"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:140px">
+                        <select name="taskType">
+                            <option value="">全部类型</option>
+                            <option value="固定资产">固定资产</option>
+                            <option value="库存物资">库存物资</option>
+                            <option value="食堂物资">食堂物资</option>
+                            <option value="综合盘点">综合盘点</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <div class="layui-input-inline" style="width:120px">
+                        <select name="status">
+                            <option value="">全部状态</option>
+                            <option value="草稿">草稿</option>
+                            <option value="进行中">进行中</option>
+                            <option value="已完成">已完成</option>
+                            <option value="已取消">已取消</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-inline">
+                    <button class="layui-btn layui-btn-sm" lay-submit lay-filter="search">查询</button>
+                    <button type="button" class="layui-btn layui-btn-primary layui-btn-sm" id="resetBtn">重置</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body"><table class="layui-hide" id="taskTable" lay-filter="taskTable"></table></div>
+    </div>
+</div>
+
+<script type="text/html" id="listToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新建盘点任务</button>
+    </div>
+</script>
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="generate">生成清单</a>
+    <a class="layui-btn layui-btn-xs" lay-event="records">盘点明细</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="finish">完成</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="formWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="editForm">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <label class="layui-form-label">任务名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="taskName" lay-verify="required" placeholder="如 2026年三季度固定资产全面盘点"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点类型</label>
+                    <div class="layui-input-block">
+                        <select name="taskType" lay-filter="taskType">
+                            <option value="固定资产">固定资产</option>
+                            <option value="库存物资">库存物资</option>
+                            <option value="食堂物资">食堂物资</option>
+                            <option value="综合盘点">综合盘点</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点方式</label>
+                    <div class="layui-input-block">
+                        <select name="checkMode">
+                            <option value="明盘">明盘（可见账面数）</option>
+                            <option value="暗盘">暗盘（隐藏账面数）</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">范围维度</label>
+                    <div class="layui-input-block">
+                        <select name="scopeType" lay-filter="scopeType">
+                            <option value="">全部（不设范围）</option>
+                            <option value="分类">按分类</option>
+                            <option value="部门">按部门</option>
+                            <option value="仓库">按仓库 / 地点</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">范围取值</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="scopeValue" placeholder="留空表示全部；多个用逗号分隔"
+                               autocomplete="off" class="layui-input">
+                        <div class="scope-tip" id="scopeTip">留空则纳入该类型下的全部标的</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计划盘点日</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="planDate" id="planDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">截止日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="deadline" id="deadline" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">负责人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="owner" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">盘点人员</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="checkers" placeholder="多人用逗号分隔"
+                               autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="doSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate;
+        var idx = null;
+
+        laydate.render({elem: '#planDate', type: 'date', value: new Date()});
+        laydate.render({elem: '#deadline', type: 'date'});
+        form.render();
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            return isNaN(n) ? v : n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        table.render({
+            elem: '#taskTable', url: '/api/inventory/task/list', method: 'get',
+            toolbar: '#listToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50],
+            cols: [[
+                {field: 'taskNo', title: '任务单号', width: 130, sort: true},
+                {field: 'taskName', title: '任务名称', minWidth: 200},
+                {field: 'taskType', title: '盘点类型', width: 100, align: 'center'},
+                {field: 'scopeValue', title: '盘点范围', width: 150,
+                    templet: function (r) {
+                        if (!r.scopeType) return '<span style="color:#888">全部</span>';
+                        return r.scopeType + '：' + (r.scopeValue || '-');
+                    }},
+                {field: 'owner', title: '负责人', width: 90},
+                {field: 'checkers', title: '盘点人员', width: 150},
+                {field: 'checkedCount', title: '盘点进度', width: 170, align: 'center',
+                    templet: function (r) {
+                        var total = Number(r.subjectCount || 0);
+                        var done = Number(r.checkedCount || 0);
+                        var pct = total === 0 ? 0 : Math.round(done * 100 / total);
+                        return '<div class="progress-wrap"><div class="progress-bar" style="width:'
+                                + pct + '%"></div><div class="progress-text">' + done + ' / ' + total
+                                + '（' + pct + '%）</div></div>';
+                    }},
+                {field: 'profitCount', title: '盘盈', width: 70, align: 'center',
+                    templet: function (r) {
+                        return Number(r.profitCount || 0) > 0
+                                ? '<span style="color:#e13c3c">' + r.profitCount + '</span>' : '0';
+                    }},
+                {field: 'lossCount', title: '盘亏', width: 70, align: 'center',
+                    templet: function (r) {
+                        return Number(r.lossCount || 0) > 0
+                                ? '<span style="color:#18a058">' + r.lossCount + '</span>' : '0';
+                    }},
+                {field: 'diffAmount', title: '差异净额(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.diffAmount); }},
+                {field: 'planDate', title: '计划日', width: 110, align: 'center'},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '进行中' ? 'layui-bg-blue'
+                                : (r.status === '已完成' ? 'layui-bg-green' : '');
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 300, fixed: 'right', toolbar: '#rowBar'}
+            ]]
+        });
+
+        form.on('submit(search)', function (obj) {
+            table.reload('taskTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        $('#resetBtn').on('click', function () {
+            $('input[name=keywords]').val('');
+            $('select[name=taskType],select[name=status]').val('');
+            form.render('select');
+            table.reload('taskTable', {where: {keywords: '', taskType: '', status: ''}, page: {curr: 1}});
+        });
+
+        form.on('select(scopeType)', function (obj) {
+            var tip = {
+                '': '留空则纳入该类型下的全部标的',
+                '分类': '填写分类名，多个用逗号分隔，如：电子设备,办公家具',
+                '部门': '填写使用部门，多个用逗号分隔，如：财务科,采矿车间',
+                '仓库': '填写仓库或存放地点，多个用逗号分隔'
+            };
+            $('#scopeTip').text(tip[obj.value] || '');
+        });
+
+        table.on('toolbar(taskTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(taskTable)', function (obj) {
+            var d = obj.data;
+            if (obj.event === 'generate') {
+                layer.confirm('按当前范围生成应盘清单？<br>已存在的标的不会重复生成，已录入的实盘数也不会被覆盖。',
+                    function (i) {
+                        layer.close(i);
+                        $.post('/api/inventory/task/generate', {id: d.id}, function (res) {
+                            if (res.code !== 0) { layer.msg(res.msg || '生成失败'); return; }
+                            layer.msg('本次新增 ' + res.data + ' 条应盘明细');
+                            table.reload('taskTable');
+                        });
+                    });
+            } else if (obj.event === 'records') {
+                location.href = '/inventory/record?taskId=' + d.id;
+            } else if (obj.event === 'finish') {
+                layer.confirm('确认完成「' + d.taskName + '」？<br>完成后任务不再接受新的盘点登记。', function (i) {
+                    layer.close(i);
+                    $.post('/api/inventory/task/finish', {id: d.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已完成' : (res.msg || '操作失败'));
+                        table.reload('taskTable');
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除任务「' + d.taskName + '」？<br>该任务下的全部盘点明细会一并删除。', function (i) {
+                    layer.close(i);
+                    $.post('/api/inventory/task/delete', {id: d.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('taskTable');
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('editForm', {
+                id: d.id || '', taskName: d.taskName || '', taskType: d.taskType || '固定资产',
+                scopeType: d.scopeType || '', scopeValue: d.scopeValue || '',
+                checkMode: d.checkMode || '明盘', owner: d.owner || '', checkers: d.checkers || '',
+                planDate: d.planDate || '', deadline: d.deadline || '', remark: d.remark || ''
+            });
+            idx = layer.open({
+                type: 1, title: '新建盘点任务',
+                area: ['760px', '580px'], content: $('#formWrap'),
+                end: function () { idx = null; }
+            });
+        }
+
+        $('#cancelBtn').on('click', function () { layer.close(idx); });
+
+        form.on('submit(doSubmit)', function (obj) {
+            $.ajax({
+                url: '/api/inventory/task/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(obj.field),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已创建，请点击「生成清单」');
+                    table.reload('taskTable');
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

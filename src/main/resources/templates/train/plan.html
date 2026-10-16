@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>培训计划</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:220px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称 / 讲师 / 部门"
+                           autocomplete="off" class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="planYear">
+                        <option value="">全部年度</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:130px;margin-bottom:0">
+                    <select name="planType">
+                        <option value="">全部类型</option>
+                        <option value="入职培训">入职培训</option>
+                        <option value="岗位技能">岗位技能</option>
+                        <option value="安全环保">安全环保</option>
+                        <option value="专项培训">专项培训</option>
+                        <option value="管理提升">管理提升</option>
+                        <option value="继续教育">继续教育</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="草稿">草稿</option>
+                        <option value="报名中">报名中</option>
+                        <option value="进行中">进行中</option>
+                        <option value="已结束">已结束</option>
+                        <option value="已取消">已取消</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="planTable" lay-filter="planTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="planToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增培训
+        </button>
+    </div>
+</script>
+
+<script type="text/html" id="planRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="students">学员</a>
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{#  if(d.status !== '已结束'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="finish">结束</a>
+    {{#  } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<div id="planFormWrap" style="display: none;">
+    <form class="layui-form" id="planForm" lay-filter="planForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计划编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="planNo" placeholder="如 PX2026-001" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">培训类型</label>
+                    <div class="layui-input-block">
+                        <select name="planType">
+                            <option value="入职培训">入职培训</option>
+                            <option value="岗位技能">岗位技能</option>
+                            <option value="安全环保">安全环保</option>
+                            <option value="专项培训">专项培训</option>
+                            <option value="管理提升">管理提升</option>
+                            <option value="继续教育">继续教育</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">培训名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">关联课程</label>
+                    <div class="layui-input-block">
+                        <select name="courseId" id="courseSel"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">关联考试</label>
+                    <div class="layui-input-block">
+                        <select name="examId" id="examSel"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">开始日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="startDate" id="startDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结束日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="endDate" id="endDate" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">培训地点</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="address" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">讲师</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="teacher" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">主办部门</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="dept" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计划人数</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="planCount" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">学时</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="hours" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">学分</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="credit" step="0.5" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="草稿">草稿</option>
+                            <option value="报名中">报名中</option>
+                            <option value="进行中">进行中</option>
+                            <option value="已结束">已结束</option>
+                            <option value="已取消">已取消</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">参训对象</label>
+            <div class="layui-input-block">
+                <input type="text" name="targetDept" placeholder="如 采矿车间全体作业人员" autocomplete="off"
+                       class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="planSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="planCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+        var layerIndex = null;
+
+        laydate.render({elem: '#startDate', type: 'date'});
+        laydate.render({elem: '#endDate', type: 'date'});
+
+        // 课程 / 考试下拉
+        $.get('/api/train/course/all', function (res) {
+            var html = '<option value="">不关联课程</option>';
+            (res.data || []).forEach(function (c) {
+                html += '<option value="' + c.id + '">' + esc(c.courseNo + ' ' + c.name) + '</option>';
+            });
+            $('#courseSel').html(html);
+            form.render('select');
+        });
+        $.get('/api/train/exam/all', function (res) {
+            var html = '<option value="">不设考试</option>';
+            (res.data || []).forEach(function (e) {
+                html += '<option value="' + e.id + '">' + esc(e.examNo + ' ' + e.name) + '</option>';
+            });
+            $('#examSel').html(html);
+            form.render('select');
+        });
+
+        var defaultStatus = query('status');
+
+        table.render({
+            elem: '#planTable',
+            url: '/api/train/plan/list',
+            method: 'get',
+            where: {status: defaultStatus || ''},
+            toolbar: '#planToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'planNo', title: '计划编号', width: 120, sort: true},
+                {field: 'name', title: '培训名称', minWidth: 220},
+                {field: 'planType', title: '类型', width: 100},
+                {field: 'courseName', title: '关联课程', minWidth: 180},
+                {field: 'startDate', title: '开始', width: 108, align: 'center'},
+                {field: 'endDate', title: '结束', width: 108, align: 'center'},
+                {field: 'address', title: '地点', width: 140},
+                {field: 'dept', title: '主办部门', width: 110},
+                {field: 'teacher', title: '讲师', width: 90},
+                {field: 'planCount', title: '计划', width: 70, align: 'center'},
+                {field: 'enrollCount', title: '参训', width: 70, align: 'center'},
+                {field: 'passCount', title: '合格', width: 70, align: 'center',
+                    templet: function (r) {
+                        return r.passCount > 0
+                            ? '<span style="color:#18a058;font-weight:600">' + r.passCount + '</span>' : '0';
+                    }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已结束' ? 'layui-bg-green'
+                            : (r.status === '进行中' ? 'layui-bg-blue'
+                                : (r.status === '报名中' ? 'layui-bg-orange' : ''));
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 220, fixed: 'right', toolbar: '#planRowBar'}
+            ]]
+        });
+
+        if (defaultStatus) {
+            $('#searchForm select[name="status"]').val(defaultStatus);
+            form.render('select');
+        }
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('planTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        table.on('toolbar(planTable)', function (obj) {
+            if (obj.event === 'add') openForm(null);
+        });
+
+        table.on('tool(planTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'students') {
+                openTab('/train/enroll?planId=' + row.id);
+            } else if (obj.event === 'finish') {
+                layer.confirm('确认将「' + esc(row.name) + '」置为已结束吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/train/plan/finish', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('已结束', {icon: 1});
+                            table.reload('planTable');
+                        } else {
+                            layer.msg(res.msg || '操作失败');
+                        }
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除「' + esc(row.name) + '」吗？其下参训记录会一并删除。',
+                    {icon: 3, title: '提示'}, function (i) {
+                        layer.close(i);
+                        $.post('/api/train/plan/delete', {id: row.id}, function (res) {
+                            if (res.code === 0) {
+                                layer.msg('删除成功', {icon: 1});
+                                table.reload('planTable');
+                            } else {
+                                layer.msg(res.msg || '删除失败');
+                            }
+                        });
+                    });
+            }
+        });
+
+        function openForm(row) {
+            var d = row || {};
+            form.val('planForm', {
+                id: d.id || '',
+                planNo: d.planNo || '',
+                name: d.name || '',
+                planType: d.planType || '岗位技能',
+                courseId: d.courseId || '',
+                examId: d.examId || '',
+                startDate: d.startDate || '',
+                endDate: d.endDate || '',
+                address: d.address || '',
+                teacher: d.teacher || '',
+                dept: d.dept || '',
+                planCount: d.planCount === null || d.planCount === undefined ? '' : d.planCount,
+                hours: d.hours === null || d.hours === undefined ? '' : d.hours,
+                credit: d.credit === null || d.credit === undefined ? '' : d.credit,
+                status: d.status || '报名中',
+                targetDept: d.targetDept || '',
+                remark: d.remark || ''
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑培训计划' : '新增培训计划',
+                area: ['900px', '620px'],
+                content: $('#planFormWrap'),
+                end: function () { layerIndex = null; }
+            });
+        }
+
+        form.on('submit(planSubmit)', function (data) {
+            var f = data.field;
+            var payload = {
+                id: f.id ? Number(f.id) : null,
+                planNo: f.planNo,
+                name: f.name,
+                planType: f.planType,
+                courseId: f.courseId ? Number(f.courseId) : null,
+                examId: f.examId ? Number(f.examId) : null,
+                startDate: f.startDate || null,
+                endDate: f.endDate || null,
+                address: f.address,
+                teacher: f.teacher,
+                dept: f.dept,
+                planCount: f.planCount === '' ? 0 : Number(f.planCount),
+                hours: f.hours === '' ? 0 : Number(f.hours),
+                credit: f.credit === '' ? 0 : Number(f.credit),
+                status: f.status,
+                targetDept: f.targetDept,
+                remark: f.remark
+            };
+            $.ajax({
+                url: '/api/train/plan/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('planTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () { layer.msg('请求异常，请稍后重试'); }
+            });
+            return false;
+        });
+
+        $('#planCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+
+        function query(name) {
+            var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+
+        function openTab(href) {
+            try {
+                var admin = parent.layui && parent.layui.admin;
+                if (admin && admin.events && admin.events.openTab) {
+                    admin.events.openTab({href: href});
+                    return;
+                }
+                if (admin && admin.openTab) {
+                    admin.openTab({href: href});
+                    return;
+                }
+            } catch (e) {
+                // 非框架环境，直接跳转
+            }
+            location.href = href;
+        }
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>

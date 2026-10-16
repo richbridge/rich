@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>工资总览</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .rich-card-gap { margin-bottom: 12px; }
+        .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .kpi-card {
+            flex: 1; min-width: 160px; background: #fff; border-radius: 4px; padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+        }
+        .kpi-label { color: #8a9099; font-size: 13px; }
+        .kpi-value { font-size: 24px; font-weight: 600; color: #1f2329; margin-top: 6px; line-height: 1.2; }
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .chart-box { width: 100%; height: 300px; }
+        .tip-card {
+            background: #fff; border-radius: 4px; padding: 14px 16px; cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: box-shadow .2s;
+        }
+        .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
+        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 6px; }
+        .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 当期 KPI -->
+    <div class="kpi-row rich-card-gap">
+        <div class="kpi-card">
+            <div class="kpi-label">当期核定工资总额</div>
+            <div class="kpi-value" id="kpiApproved">-</div>
+            <div class="kpi-sub">期间 <span id="kpiPeriod">-</span> · <span id="kpiAllocCnt">0</span> 张下拨单</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">当期实际下拨</div>
+            <div class="kpi-value" id="kpiAlloc" style="color:#2f7ef7">-</div>
+            <div class="kpi-sub">已发放 <span id="kpiUsed">0</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">当期结余</div>
+            <div class="kpi-value" id="kpiBalance" style="color:#18a058">-</div>
+            <div class="kpi-sub">下拨金额 - 已发放</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">当期上报人数</div>
+            <div class="kpi-value" id="kpiHeadcount">-</div>
+            <div class="kpi-sub">上报单 <span id="kpiReportCnt">0</span> 张 · <span id="kpiDeptCnt">0</span> 个部门</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">当期应发工资</div>
+            <div class="kpi-value" id="kpiGross">-</div>
+            <div class="kpi-sub">实发 <span id="kpiNet">0</span></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">累计实发工资</div>
+            <div class="kpi-value" id="kpiTotalNet">-</div>
+            <div class="kpi-sub">累计代扣 <span id="kpiTotalDeduct">0</span> · 个税 <span id="kpiTotalTax">0</span></div>
+        </div>
+    </div>
+
+    <!-- 提醒 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipPending">
+                <div class="tip-title">待审核上报单</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipPendingNum" style="color:#ff9f43">0</span> 张待财务科审核</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipDraft">
+                <div class="tip-title">草稿未上报</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipDraftNum" style="color:#8a9099">0</span> 张尚未提交</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipRejected">
+                <div class="tip-title">被驳回</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipRejectedNum" style="color:#e13c3c">0</span> 张需修改重报</div>
+            </div>
+        </div>
+        <div class="layui-col-md3">
+            <div class="tip-card" id="tipWait">
+                <div class="tip-title">待下拨</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipWaitNum" style="color:#7c5cff">0</span> 张下拨单未拨付</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">下拨类型分布</div>
+                <div class="layui-card-body">
+                    <div id="typeChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">上报单状态分布</div>
+                <div class="layui-card-body">
+                    <div id="statusChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md4">
+            <div class="layui-card">
+                <div class="layui-card-header">当期部门下拨与实发（万元）</div>
+                <div class="layui-card-body">
+                    <div id="deptChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">月度下拨与发放趋势</div>
+                <div class="layui-card-body">
+                    <div id="trendChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 下拨单 -->
+    <div class="layui-card">
+        <div class="layui-card-header">
+            工资下拨单
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">上级单位核定工资总额后向本公司下拨资金</span>
+        </div>
+        <div class="layui-card-body">
+            <table class="layui-hide" id="allocTable" lay-filter="allocTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<script type="text/html" id="allocRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="reports">上报单</a>
+</script>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        var typeChart = echarts.init(document.getElementById('typeChart'));
+        var statusChart = echarts.init(document.getElementById('statusChart'));
+        var deptChart = echarts.init(document.getElementById('deptChart'));
+        var trendChart = echarts.init(document.getElementById('trendChart'));
+
+        function money(v) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            if (isNaN(n)) return v;
+            return n.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function wan(v) {
+            var n = Number(v || 0);
+            return (n / 10000).toFixed(2);
+        }
+
+        // ---------------------------------------------------------- 下拨单表
+        table.render({
+            elem: '#allocTable',
+            url: '/api/salary/alloc/list',
+            method: 'get',
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {field: 'allocNo', title: '下拨单号', width: 130, sort: true},
+                {
+                    field: 'periodMonth', title: '期间', width: 90, align: 'center',
+                    templet: function (r) {
+                        return r.periodYear + '-' + (r.periodMonth < 10 ? '0' + r.periodMonth : r.periodMonth);
+                    }
+                },
+                {field: 'deptName', title: '下拨部门', width: 110},
+                {field: 'allocType', title: '下拨类型', width: 110},
+                {field: 'sourceUnit', title: '拨付单位', minWidth: 200},
+                {field: 'approvedAmount', title: '核定总额(元)', width: 130, align: 'right', sort: true,
+                    templet: function (r) { return money(r.approvedAmount); }},
+                {field: 'allocAmount', title: '下拨金额(元)', width: 130, align: 'right', sort: true,
+                    templet: function (r) {
+                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.allocAmount) + '</span>';
+                    }},
+                {field: 'usedAmount', title: '已发放(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.usedAmount); }},
+                {field: 'balanceAmount', title: '结余(元)', width: 120, align: 'right',
+                    templet: function (r) {
+                        var c = Number(r.balanceAmount || 0) > 0 ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + '">' + money(r.balanceAmount) + '</span>';
+                    }},
+                {field: 'allocDate', title: '下拨日期', width: 110, align: 'center'},
+                {field: 'voucherNo', title: '拨付文号', minWidth: 180},
+                {field: 'handler', title: '经办人', width: 90},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        var color = r.status === '已结算' ? 'layui-bg-green'
+                            : (r.status === '已下拨' ? 'layui-bg-blue'
+                                : (r.status === '部分使用' ? 'layui-bg-orange' : ''));
+                        return '<span class="layui-badge ' + color + '">' + (r.status || '-') + '</span>';
+                    }},
+                {title: '操作', width: 90, fixed: 'right', toolbar: '#allocRowBar'}
+            ]]
+        });
+
+        table.on('tool(allocTable)', function (obj) {
+            if (obj.event === 'reports') {
+                openTab('/salary/report?allocId=' + obj.data.id);
+            }
+        });
+
+        // ---------------------------------------------------------- 统计
+        function load() {
+            $.post('/api/salary/refresh-status', function () {
+                $.get('/api/salary/overview', function (res) {
+                    if (res.code !== 0) {
+                        layer.msg(res.msg || '统计加载失败');
+                        return;
+                    }
+                    var kpi = res.data.kpi || {};
+                    var cur = res.data.current || {};
+                    $('#kpiPeriod').text(cur.period || '-');
+                    $('#kpiApproved').text(money(cur.approved));
+                    $('#kpiAlloc').text(money(cur.alloced));
+                    $('#kpiUsed').text(money(cur.used));
+                    $('#kpiBalance').text(money(cur.balance));
+                    $('#kpiAllocCnt').text(cur.cnt || 0);
+                    $('#kpiHeadcount').text(cur.reportHeadcount || 0);
+                    $('#kpiReportCnt').text(cur.reportCount || 0);
+                    $('#kpiDeptCnt').text(cur.deptCount || 0);
+                    $('#kpiGross').text(money(cur.reportGross));
+                    $('#kpiNet').text(money(cur.reportNet));
+                    $('#kpiTotalNet').text(money(kpi.net));
+                    $('#kpiTotalDeduct').text(money(kpi.deduct));
+                    $('#kpiTotalTax').text(money(kpi.tax));
+
+                    var r = res.data.reminders || {};
+                    $('#tipPendingNum').text(r.pendingAudit || 0);
+                    $('#tipDraftNum').text(r.draft || 0);
+                    $('#tipRejectedNum').text(r.rejected || 0);
+                    $('#tipWaitNum').text(r.waitAlloc || 0);
+
+                    renderPie(typeChart, res.data.allocTypes || []);
+                    renderPie(statusChart, res.data.reportStatus || []);
+                    renderDept(res.data.deptStats || []);
+                    renderTrend(res.data.trend || []);
+                    table.reload('allocTable');
+                });
+            });
+        }
+
+        function renderPie(chart, rows) {
+            chart.setOption({
+                tooltip: {trigger: 'item', formatter: '{b}: {c} ({d}%)'},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                series: [{
+                    type: 'pie',
+                    radius: ['42%', '66%'],
+                    center: ['50%', '45%'],
+                    avoidLabelOverlap: true,
+                    label: {formatter: '{b}\n{c}'},
+                    data: rows.map(function (r) {
+                        return {name: r.name, value: Number(r.value || 0)};
+                    })
+                }],
+                color: ['#2f7ef7', '#18a058', '#ff9f43', '#e13c3c', '#8a9099', '#7c5cff']
+            }, true);
+        }
+
+        function renderDept(rows) {
+            rows = rows.slice(0, 10);
+            deptChart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                grid: {left: 8, right: 16, top: 16, bottom: 36, containLabel: true},
+                xAxis: {
+                    type: 'category',
+                    data: rows.map(function (r) { return r.name; }),
+                    axisLabel: {fontSize: 11, interval: 0, rotate: 30}
+                },
+                yAxis: {type: 'value', name: '万元', splitLine: {lineStyle: {type: 'dashed'}}},
+                series: [
+                    {
+                        name: '下拨', type: 'bar', barWidth: 12,
+                        itemStyle: {color: '#c7d7f5', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return wan(r.alloced); })
+                    },
+                    {
+                        name: '已发放', type: 'bar', barWidth: 12,
+                        itemStyle: {color: '#18a058', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return wan(r.used); })
+                    },
+                    {
+                        name: '应发', type: 'bar', barWidth: 12,
+                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return wan(r.gross); })
+                    },
+                    {
+                        name: '实发', type: 'bar', barWidth: 12,
+                        itemStyle: {color: '#ff9f43', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return wan(r.net); })
+                    }
+                ]
+            }, true);
+        }
+
+        function renderTrend(rows) {
+            trendChart.setOption({
+                tooltip: {trigger: 'axis', axisPointer: {type: 'shadow'}},
+                legend: {bottom: 0, itemWidth: 12, itemHeight: 8, textStyle: {fontSize: 12}},
+                grid: {left: 8, right: 16, top: 16, bottom: 36, containLabel: true},
+                xAxis: {type: 'category', data: rows.map(function (r) { return r.label; })},
+                yAxis: {type: 'value', name: '万元', splitLine: {lineStyle: {type: 'dashed'}}},
+                series: [
+                    {
+                        name: '核定总额', type: 'bar', barWidth: 18,
+                        itemStyle: {color: '#c7d7f5', borderRadius: [3, 3, 0, 0]},
+                        data: rows.map(function (r) { return wan(r.approved); })
+                    },
+                    {
+                        name: '下拨金额', type: 'line', smooth: true, symbolSize: 6,
+                        itemStyle: {color: '#2f7ef7'},
+                        data: rows.map(function (r) { return wan(r.alloced); })
+                    },
+                    {
+                        name: '已发放', type: 'line', smooth: true, symbolSize: 6,
+                        itemStyle: {color: '#18a058'},
+                        data: rows.map(function (r) { return wan(r.used); })
+                    },
+                    {
+                        name: '结余', type: 'line', smooth: true, symbolSize: 6,
+                        itemStyle: {color: '#ff9f43'},
+                        data: rows.map(function (r) { return wan(r.balance); })
+                    }
+                ]
+            }, true);
+        }
+
+        function openTab(url) {
+            if (window.parent && window.parent.layui && window.parent.layui.admin) {
+                window.parent.layui.admin.events.openTabsPage
+                    ? window.parent.layui.admin.events.openTabsPage(url, '')
+                    : (window.location.href = url);
+            } else if (window.parent && window.parent.layui && window.parent.layui.index) {
+                window.parent.layui.index.openTabsPage(url, '');
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        $('#tipPending').on('click', function () { openTab('/salary/report?status=待审核'); });
+        $('#tipDraft').on('click', function () { openTab('/salary/report?status=草稿'); });
+        $('#tipRejected').on('click', function () { openTab('/salary/report?status=已驳回'); });
+        $('#tipWait').on('click', function () { openTab('/salary/alloc?status=待下拨'); });
+
+        load();
+    });
+</script>
+</body>
+</html>

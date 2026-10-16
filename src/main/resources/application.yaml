@@ -1,0 +1,164 @@
+server:
+  # 显式指定端口：避免被运行环境中的 SERVER__PORT 覆盖后与宿主进程冲突
+  port: 8080
+
+spring:
+  application:
+    name: rich
+
+  thymeleaf:
+    # 开发阶段关闭模板缓存，修改 HTML 后刷新即可生效
+    cache: false
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/yssys?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: richfan
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  configuration:
+    # 把 SQL 打印到控制台，方便开发调试
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      # 全局配置主键类型为数据库自增（可选，也可以在实体类单独指定）
+      id-type: auto
+
+sa-token:
+  # token 名称（同时也是 cookie 名称）
+  token-name: satoken
+  # token 有效期（单位：秒） 默认30天，-1 代表永久有效
+  timeout: 2592000
+  # token 最低活跃频率（单位：秒），-1 代表不限制
+  active-timeout: -1
+  # 是否允许同一账号多地同时登录（false 时新登录挤掉旧登录）
+  is-concurrent: true
+  # 多人登录同一账号时，是否共用一个 token
+  is-share: false
+  # token 风格
+  token-style: random-128
+  # 是否输出操作日志
+  is-log: true
+
+# 演示数据初始化配置
+rich:
+  init:
+    # 启动时自动建表，并在表为空时写入演示数据
+    enabled: true
+    # 将 admin 账号密码重置为 123456，保证开箱可登录
+    reset-admin-password: true
+
+  # 权限模块配置（用户 / 角色 / 资源 / 路由鉴权）
+  rbac:
+    # 启动时同步 fan.rich.config.PermissionCatalog 里登记的资源与预置角色
+    # （受 rich.init.enabled 总闸门约束；资源按权限码查重补齐，不覆盖管理员的改名）
+    enabled: true
+    # 创建演示账号：viewer / finance / archivist，密码统一 123456
+    init-demo: true
+
+  # 对外开放 REST API 配置（/openapi/**，供移动端与第三方系统调用）
+  openapi:
+    # 总开关
+    enabled: true
+    # 同一 IP 每分钟请求上限，超出返回 429；0 表示不限制
+    rate-limit: 600
+    # 允许跨域的源，移动端 H5 调试用；* 表示不限制
+    allowed-origins: "*"
+
+  # 销售台账配置
+  sale:
+    # 《金宝销售台账》Excel 路径；启动时若发货台账为空则自动导入一次
+    import-path: D:/金宝矿业/【工作记录】/【月】产销/销售/金宝销售台账26年9月.xlsx
+
+  # 审计 / 检查模块配置（审计与检查为同一模块：整改台账 + 检查发现问题）
+  audit:
+    # 启动时自动建表
+    enabled: true
+    # 写入《招金有色二季度财务检查整改台账》（项目 / 问题 / 单位 / 检查任务）
+    init-demo: true
+    # 首次导入台账前清空旧的演示数据
+    reset-demo: true
+
+  # 工资模块配置（工资下拨 / 工资上报 / 工资明细 / 核算部门）
+  salary:
+    # 启动时自动建表
+    enabled: true
+    # 表为空时写入取自「财务科共享盘\工资\工资」的真实数据（2026年1-8月）
+    init-demo: true
+    # 首次写入前清空旧的演示数据
+    reset-demo: true
+
+  # 培训模块配置（课程课件 / 培训计划 / 参训记录 / 考试 / 成绩）
+  train:
+    # 启动时自动建表
+    enabled: true
+    # 表为空时写入一批演示数据（课程 / 培训 / 参训 / 考试），可在页面删除
+    init-demo: true
+    # 首次写入前清空旧的演示数据
+    reset-demo: true
+
+  # 档案管理模块配置（门类 / 存放位置 / 案卷 / 卷内文件 / 借阅 / 销毁）
+  archive:
+    # 启动时自动建表
+    enabled: true
+    # 表为空时写入演示数据（不含真实档案，可在页面删除）
+    init-demo: true
+    # 首次写入前清空旧的演示数据
+    reset-demo: true
+
+  # 行情采集配置
+  crawler:
+    # 单个数据源的下载线程数
+    thread: 4
+    # 上金所按日下载 xlsx，回溯多少个自然日补齐历史（当日 + 历史）
+    sge-backfill-days: 30
+    # 上期所按日下载日行情文件，回溯多少个自然日补齐历史（当日 + 历史）
+    shfe-backfill-days: 30
+    # 现货（SMM / CJ）
+    spot:
+      # 只接受「最新交易日」的数据。站点对历史行会做加密变更（观测 = 真值×(1+n×万分之1)，
+      # n 每次请求随机），该偏移不可还原；只有最新交易日那一行才是未经处理的真值。
+      # 开启后，目标日若已不是站点口径的最新交易日，整批跳过不落库（日志记为"跳过"）。
+      require-fresh: true
+    # 定时任务
+    schedule:
+      # 总开关；本地调试不想打外部站点时可设为 false
+      enabled: true
+      # ============ 夜间补采：采集「上一工作日」的终值 ============
+      # 窗口 = 上一工作日 18 点 ~ 当天 8 点。四个数据源（上期所/上金所/上海有色/长江有色）
+      # 都在这段时间内产出最终日终价，因此统一在这段时间补采。
+      # 「上一工作日」按工作日日历推算：周五 18 点开窗 → 下周一 8 点关窗，法定节假日同理。
+      night-window-start-hour: 18
+      night-window-end-hour: 8
+      # 窗口内每个数据源只成功采一次；失败（多为日终价还没发布）时的重试冷却时间（分钟）
+      night-retry-minutes: 30
+      # 单个数据源在同一个窗口内的最大尝试次数；超过就放弃本窗口，避免站点没数据时整夜猛打
+      night-max-attempts: 6
+      # 每 20 分钟检查一次是否落在夜间补采窗口内
+      night-cron: 0 0/20 * * * ?
+      # ============ 日间轮询：采集「当天最新价」 ============
+      # 工作日 8 点 ~ 18 点每半小时采一次当天最新价；非交易日自动跳过，
+      # 18 点之后交给夜间补采把这一天定稿成终值。
+      intraday-start-hour: 8
+      intraday-end-hour: 18
+      # 是否把上海有色 / 长江有色也纳入半小时轮询（它们要按上百个品种逐个请求，成本较高；
+      # 若遇站点限流可设为 false，只保留交易所的盘中轮询 + 夜间的现货终值补采）
+      intraday-spot: true
+      # 每 30 分钟轮询一次
+      intraday-cron: 0 0/30 * * * ?
+      # ============ 其他 ============
+      # 应用启动后立即按当前时刻补跑一次（服务器开机时采集一次），落哪个时段就跑哪个任务
+      crawl-on-startup: true
+      # 开机补采前的等待秒数，等应用完全就绪
+      startup-delay-seconds: 10
+      # 法定节假日（含调休放假的周末），形如 2026-10-01,2026-10-02
+      holidays:
+      # 周末调休上班日，形如 2026-09-27。
+      # 注意：交易所与现货市场在"调休上班的周末"并<b>不</b>开市，因此通常<b>不需要</b>填这里；
+      # 填了会把那天当成交易日，夜间补采会去请求一个并不存在的交易日数据（会自动跳过并重试）。
+      workdays:
+      # 交易所当日 + 历史完整回补：每天 16:40（日盘收盘且交易所发布当日行情文件后）
+      daily-cron: 0 40 16 * * ?
+
+

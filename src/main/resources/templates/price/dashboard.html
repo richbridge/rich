@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>价格总览</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-card-gap { margin-bottom: 12px; }
+
+        .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .kpi-card {
+            flex: 1;
+            min-width: 180px;
+            background: #fff;
+            border-radius: 4px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+        }
+
+        .kpi-label { color: #8a9099; font-size: 13px; }
+
+        .kpi-value {
+            font-size: 26px;
+            font-weight: 600;
+            color: #1f2329;
+            margin-top: 6px;
+            line-height: 1.2;
+        }
+
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+
+        .chart-box { width: 100%; height: 320px; }
+
+        .up { color: #e13c3c; }
+        .down { color: #18a058; }
+        .flat { color: #8a9099; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 指标卡 -->
+    <div class="kpi-row rich-card-gap">
+        <div class="kpi-card">
+            <div class="kpi-label">现货行情记录</div>
+            <div class="kpi-value" id="kpiSpot">-</div>
+            <div class="kpi-sub">SGE / SMM / CJ</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">期货行情记录</div>
+            <div class="kpi-value" id="kpiFutures">-</div>
+            <div class="kpi-sub">SHFE 合约日行情</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">登记品种数</div>
+            <div class="kpi-value" id="kpiProduct">-</div>
+            <div class="kpi-sub">已纳入采集字典</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">各源最新交易日</div>
+            <div class="kpi-sub" id="kpiLatest" style="margin-top: 8px; line-height: 1.8;">加载中…</div>
+        </div>
+    </div>
+
+    <!-- 多金属报价表（按日期查看） -->
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-header">
+            <span id="metalTitle">多金属报价表</span>
+            <span class="layui-word-aux" style="margin-left:8px;font-size:12px">（期货取当月+2 合约；当日看最新价、历史看收盘价；上金所昨日结算=加权平均价）</span>
+            <span style="float:right;margin-top:-2px">
+                <form class="layui-form" style="display:inline-block">
+                    <div class="layui-form-item" style="margin:0;display:inline-block;width:150px">
+                        <input type="text" id="metalDate" class="layui-input" placeholder="选择日期"
+                               autocomplete="off" readonly
+                               style="height:30px;line-height:30px;cursor:pointer">
+                    </div>
+                </form>
+                <button class="layui-btn layui-btn-xs layui-btn-primary" id="metalReloadBtn"
+                        style="margin-left:6px">刷新</button>
+            </span>
+        </div>
+        <div class="layui-card-body">
+            <table class="layui-hide" id="metalTable" lay-filter="metalTable"></table>
+        </div>
+    </div>
+
+    <!-- 趋势图 -->
+    <div class="layui-row layui-col-space12 rich-card-gap">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">
+                    <form class="layui-form" style="display:inline-block;margin-top:-4px">
+                        <div class="layui-form-item" style="margin:0;display:inline-block;width:130px">
+                            <select id="sourceSel" lay-filter="sourceSel"></select>
+                        </div>
+                        <div class="layui-form-item" style="margin:0;display:inline-block;width:260px">
+                            <select id="subjectSel" lay-filter="subjectSel"></select>
+                        </div>
+                    </form>
+                    <span style="float:right;margin-top:2px">
+                        <button class="layui-btn layui-btn-xs layui-btn-primary" id="reloadBtn">刷新曲线</button>
+                    </span>
+                </div>
+                <div class="layui-card-body">
+                    <div id="trendChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'laydate', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var laydate = layui.laydate;
+        var $ = layui.jquery;
+
+        var trendChart = echarts.init(document.getElementById('trendChart'));
+        var subjects = [];
+
+        /** 涨红跌绿，符合国内行情展示习惯。 */
+        function rateText(rate) {
+            if (rate === null || rate === undefined || rate === '') return '<span class="flat">-</span>';
+            var n = Number(rate);
+            if (isNaN(n) || n === 0) return '<span class="flat">0.00%</span>';
+            var cls = n > 0 ? 'up' : 'down';
+            return '<span class="' + cls + '">' + (n > 0 ? '+' : '') + n.toFixed(2) + '%</span>';
+        }
+
+        function num(v, digits) {
+            if (v === null || v === undefined || v === '') return '-';
+            var n = Number(v);
+            if (isNaN(n)) return '-';
+            return n.toLocaleString('zh-CN', {
+                minimumFractionDigits: digits === undefined ? 2 : digits,
+                maximumFractionDigits: digits === undefined ? 2 : digits
+            });
+        }
+
+        // ---------------------------------------------------------------- 指标卡
+        $.get('/api/price/summary', function (res) {
+            if (res.code !== 0) return;
+            var d = res.data;
+            document.getElementById('kpiSpot').textContent = Number(d.spotCount || 0).toLocaleString('zh-CN');
+            document.getElementById('kpiFutures').textContent = Number(d.futuresCount || 0).toLocaleString('zh-CN');
+            document.getElementById('kpiProduct').textContent = Number(d.productCount || 0).toLocaleString('zh-CN');
+            var latest = d.latestDate || {};
+            var html = '';
+            for (var k in latest) {
+                html += '<div><b>' + k + '</b> ' + latest[k] + '</div>';
+            }
+            document.getElementById('kpiLatest').innerHTML = html || '暂无数据';
+        });
+
+        // ---------------------------------------------------------------- 多金属报价表（按日期）
+        function loadMetal(date) {
+            var params = date ? {date: date} : {};
+            $.get('/api/price/multi-metal', params, function (res) {
+                if (res.code !== 0) return;
+                var rows = res.data || [];
+                // 各行可能落在不同的交易日（某源当日休市会落回前一交易日），取最早的日期做标题
+                var dates = rows.map(function (r) { return r.tradeDate; })
+                    .filter(function (d) { return !!d; }).sort();
+                var title = '多金属报价表';
+                if (dates.length) {
+                    var p = dates[0].split('-');
+                    title = p[0] + '年' + Number(p[1]) + '月' + Number(p[2]) + '日多金属报价表';
+                }
+                var missing = rows.filter(function (r) { return !r.tradeDate; }).length;
+                var diff = dates.length > 1 && dates[0] !== dates[dates.length - 1];
+                var tip = '';
+                if (missing) tip = '（' + missing + '个品种当日无数据）';
+                else if (diff) tip = '（部分品种落回前一交易日）';
+                // 价格口径：行情日期为当日 → 盘中最新价；历史日期 → 收盘价
+                var isToday = rows.some(function (r) { return r.priceType === '最新价'; });
+                var priceTitle = isToday ? '最新价' : '收盘价';
+                $('#metalTitle').html(title
+                    + (tip ? '<span class="layui-word-aux" style="margin-left:8px;font-size:12px">'
+                        + tip + '</span>' : ''));
+                table.render({
+                    elem: '#metalTable',
+                    data: rows,
+                    page: false,
+                    cols: [[
+                        {field: 'name', title: '种类', width: 100, align: 'center',
+                            style: 'font-weight:600;'},
+                        {field: 'contract', title: '参考合约', width: 140, align: 'center'},
+                        {
+                            field: 'latest', title: priceTitle, width: 160, align: 'center',
+                            style: 'background:#e9f8ec;font-weight:600;',
+                            templet: function (r) { return num(r.latest, 2); }
+                        },
+                        {
+                            field: 'open', title: '开盘', width: 150, align: 'center',
+                            templet: function (r) { return num(r.open, 2); }
+                        },
+                        {
+                            field: 'prevSettle', title: '昨日结算', width: 150, align: 'center',
+                            templet: function (r) { return num(r.prevSettle, 2); }
+                        },
+                        {field: 'tradeDate', title: '行情日期', width: 120, align: 'center'},
+                        {field: 'unit', title: '单位', width: 110, align: 'center'}
+                    ]]
+                });
+            });
+        }
+
+        /**
+         * 日期选择：可选范围限定在已有行情的日期区间（最早 ~ 最新），默认最新交易日。
+         * 空值（清空）时按最新交易日查，与后端默认行为一致。
+         */
+        $.get('/api/price/multi-metal/dates', function (res) {
+            if (res.code !== 0) return;
+            var dates = res.data || [];                     // 倒序：最新在前
+            var latest = dates.length ? dates[0] : '';
+            var earliest = dates.length ? dates[dates.length - 1] : '';
+            laydate.render({
+                elem: '#metalDate',
+                type: 'date',
+                value: latest,
+                min: earliest,
+                max: latest,
+                done: function (value) { loadMetal(value); }
+            });
+            loadMetal(latest);
+        });
+
+        /** 今天（yyyy-MM-dd），用于判断当前是否看的是当日行情。 */
+        function todayStr() {
+            var d = new Date();
+            var p = function (n) { return n < 10 ? '0' + n : '' + n; };
+            return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+        }
+
+        /**
+         * 刷新：日期为当日（或未选日期=最新交易日）时，先抓一次上期所 / 上金所的
+         * 盘中延时行情，落库后再重载表格，做到「点刷新即看到最新价」；
+         * 历史日期没有延时行情可抓，直接重读即可。
+         */
+        $('#metalReloadBtn').on('click', function () {
+            var date = $('#metalDate').val();
+            if (date && date !== todayStr()) {
+                loadMetal(date);
+                return;
+            }
+            var load = layer.load(2, {shade: 0.2});
+            $.post('/api/crawl/realtime/metals', function (res) {
+                layer.close(load);
+                if (res.code !== 0) {
+                    layer.msg('采集失败：' + (res.msg || '未知错误'), {icon: 2});
+                    loadMetal(date);
+                    return;
+                }
+                var rows = res.data || [];
+                var ok = 0;
+                var total = 0;
+                rows.forEach(function (r) {
+                    if (r.status === 1) { ok++; }
+                    total += Number(r.records || 0);
+                });
+                layer.msg('已抓取 ' + ok + '/' + rows.length + ' 个数据源，更新 ' + total + ' 条行情',
+                    {icon: 1});
+                loadMetal(date);
+            }).fail(function () {
+                layer.close(load);
+                layer.msg('采集请求失败，已按库内数据刷新', {icon: 2});
+                loadMetal(date);
+            });
+        });
+
+        // ---------------------------------------------------------------- 品种下拉
+        var SOURCE_NAME = {SHFE: '上期所', SGE: '上金所', SMM: '上海有色', CJ: '长江有色'};
+        var futuresInstruments = [];
+
+        function buildSources() {
+            var sources = [];
+            subjects.forEach(function (s) {
+                if (sources.indexOf(s.source) < 0) sources.push(s.source);
+            });
+            // 上期所是期货数据，单独从期货品种概览补充进来
+            if (futuresInstruments.length && sources.indexOf('SHFE') < 0) {
+                sources.push('SHFE');
+            }
+            $('#sourceSel').html(sources.map(function (s) {
+                return '<option value="' + s + '">' + (SOURCE_NAME[s] || s) + '</option>';
+            }).join(''));
+            renderSubjects(sources[0]);
+            form.render('select');
+        }
+
+        $.get('/api/price/subjects', function (res) {
+            if (res.code !== 0) return;
+            subjects = res.data || [];
+            buildSources();
+        });
+
+        $.get('/api/price/futures/instruments', function (res) {
+            if (res.code !== 0) return;
+            futuresInstruments = res.data || [];
+            buildSources();
+        });
+
+        function renderSubjects(source) {
+            var html = '';
+            if (source === 'SHFE') {
+                html = futuresInstruments.map(function (r) {
+                    var name = r.instrument_name || String(r.instrument_id).toUpperCase();
+                    return '<option value="' + r.instrument_id + '">'
+                        + name + '（' + r.contract_count + '个合约）</option>';
+                }).join('');
+            } else {
+                html = subjects.filter(function (s) { return s.source === source; })
+                    .map(function (s) {
+                        return '<option value="' + s.productId + '">'
+                            + s.productName + '（' + s.recordCount + '条）</option>';
+                    }).join('');
+            }
+            $('#subjectSel').html(html);
+            form.render('select');
+            loadTrend();
+        }
+
+        form.on('select(sourceSel)', function (data) { renderSubjects(data.value); });
+        form.on('select(subjectSel)', function () { loadTrend(); });
+        $('#reloadBtn').on('click', loadTrend);
+
+        // ---------------------------------------------------------------- 趋势图
+        function loadTrend() {
+            var source = $('#sourceSel').val();
+            var productId = $('#subjectSel').val();
+            if (!source || !productId) return;
+            var url, params, seriesName;
+            if (source === 'SHFE') {
+                // 期货：每日成交量最大合约（主力）的收盘价连续序列
+                url = '/api/price/futures/trend';
+                params = {instrumentId: productId, limit: 120};
+                seriesName = '主力合约收盘价';
+            } else {
+                url = '/api/price/trend';
+                params = {source: source, productId: productId, limit: 120};
+                seriesName = '均价';
+            }
+            $.get(url, params, function (res) {
+                if (res.code !== 0) return;
+                var d = res.data;
+                var pts = d.values || [];
+                // SHFE 刚起采时只有一两个交易日：单点画不出线，必须显示数据点标记
+                var few = pts.length <= 5;
+                trendChart.setOption({
+                    tooltip: {trigger: 'axis'},
+                    grid: {left: 60, right: 24, top: 30, bottom: 60},
+                    dataZoom: [{type: 'inside'}, {type: 'slider', height: 18, bottom: 12}],
+                    xAxis: {type: 'category', data: d.dates, boundaryGap: false},
+                    yAxis: {type: 'value', scale: true, splitLine: {lineStyle: {type: 'dashed'}}},
+                    series: [{
+                        name: seriesName, type: 'line', data: pts, smooth: true,
+                        showSymbol: few,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        label: few ? {show: true, position: 'top', formatter: function (p) {
+                            return num(p.value, 2);
+                        }} : {show: false},
+                        lineStyle: {width: 2, color: '#2d8cf0'},
+                        areaStyle: {color: 'rgba(45,140,240,.12)'}
+                    }]
+                }, true);
+            });
+        }
+
+        window.addEventListener('resize', function () {
+            trendChart.resize();
+        });
+    });
+</script>
+</body>
+</html>

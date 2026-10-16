@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>销售统计报表</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-row-gap {
+            margin-top: 15px;
+        }
+
+        .rich-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: #fff;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+        }
+
+        .rich-bar h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 600;
+            color: #2f3542;
+        }
+
+        .rich-bar .rich-tip {
+            font-size: 12px;
+            color: #99a1ae;
+            margin-left: 8px;
+        }
+
+        .rich-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 合计行加粗 */
+        .rich-total-row {
+            font-weight: 600;
+            background: #fafbfc;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 标题条：筛选 + 跳转大屏 -->
+    <div class="rich-bar">
+        <div>
+            <h2>销售统计报表<span class="rich-tip">按发货品种 / 客户 / 点价 / 提金结算分类汇总</span></h2>
+        </div>
+        <div class="rich-inline">
+            <span style="font-size:13px;color:#666">统计月份</span>
+            <select id="monthSelect" style="height:32px;border:1px solid #e6e6e6;border-radius:2px;padding:0 8px;">
+                <option value="">全部月份</option>
+            </select>
+            <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnQuery">查询</button>
+            <button class="layui-btn layui-btn-sm layui-btn-primary" id="btnExport">导出汇总表</button>
+            <button class="layui-btn layui-btn-sm" id="btnDashboard">
+                <i class="layui-icon layui-icon-chart-screen"></i> 可视化大屏
+            </button>
+        </div>
+    </div>
+
+    <!-- 按品种 / 按客户 -->
+    <div class="layui-row layui-col-space15 rich-row-gap">
+        <div class="layui-col-md7">
+            <div class="layui-card">
+                <div class="layui-card-header">销售统计汇总表（按发货品种分类）</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="tableProduct" lay-filter="tableProduct"></table>
+                </div>
+            </div>
+        </div>
+        <div class="layui-col-md5">
+            <div class="layui-card">
+                <div class="layui-card-header">销售统计汇总表（按客户分类）</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="tableBuyer" lay-filter="tableBuyer"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 点价统计 -->
+    <div class="layui-row rich-row-gap">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">点价统计表</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="tablePricing" lay-filter="tablePricing"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提金结算 -->
+    <div class="layui-row rich-row-gap">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">提金结算与开票情况</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="tableSettle" lay-filter="tableSettle"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 点价情况 -->
+    <div class="layui-row rich-row-gap">
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">点价情况表（年度余量 / 已提金 / 库存 / 欠金量）</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="tableFix" lay-filter="tableFix"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        function num(v, d) {
+            var n = Number(v || 0);
+            if (isNaN(n)) n = 0;
+            return n.toLocaleString('zh-CN', {
+                minimumFractionDigits: d === undefined ? 2 : d,
+                maximumFractionDigits: d === undefined ? 2 : d
+            });
+        }
+
+        function get(url, cb) {
+            $.get(url, function (res) {
+                if (res && res.code === 0) cb(res.data || []);
+            });
+        }
+
+        /** 当前月份（yyyy-MM）转区间起止日；空表示全部。 */
+        function rangeOf(m) {
+            if (!m) return {start: '', end: ''};
+            var y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7));
+            var last = new Date(y, mo, 0).getDate();
+            return {
+                start: m + '-01',
+                end: m + '-' + (last < 10 ? '0' + last : last)
+            };
+        }
+
+        /** 判断日期字符串是否属于指定月份。 */
+        function inMonth(dateStr, m) {
+            if (!m) return true;
+            return !!dateStr && dateStr.indexOf(m) === 0;
+        }
+
+        var state = {month: '', productRows: []};
+
+        // ------------------------------------------------------ 月份下拉
+        // 发货月份 + 点价月份 + 提金月份 合并，避免出现「有数据但选不到月份」
+        var monthSet = {};
+
+        function addMonths(list, field) {
+            for (var i = 0; i < (list || []).length; i++) {
+                var v = list[i][field];
+                if (v && v.length >= 7) monthSet[v.slice(0, 7)] = true;
+            }
+        }
+
+        function renderMonths() {
+            var months = Object.keys(monthSet).sort();
+            var html = '<option value="">全部月份</option>';
+            for (var j = 0; j < months.length; j++) {
+                html += '<option value="' + months[j] + '">' + months[j] + '</option>';
+            }
+            $('#monthSelect').html(html).val(state.month);
+        }
+
+        get('/api/sale/stats/monthly', function (list) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].month) monthSet[list[i].month] = true;
+            }
+            renderMonths();
+        });
+
+        // ------------------------------------------------------ 按品种汇总
+        function loadProduct() {
+            var r = rangeOf(state.month);
+            var url = '/api/sale/stats/table';
+            if (r.start) url += '?startDate=' + r.start + '&endDate=' + r.end;
+            get(url, function (list) {
+                state.productRows = list;
+                table.render({
+                    elem: '#tableProduct',
+                    data: list,
+                    page: false,
+                    done: function () {
+                        // 合计行加粗
+                        var idx = list.length - 1;
+                        if (idx >= 0 && list[idx].name === '销售总合计') {
+                            $('#tableProduct').next().find('.layui-table-body tr[data-index="' + idx + '"]')
+                                .addClass('rich-total-row');
+                        }
+                    },
+                    cols: [[
+                        {field: 'name', title: '发货品种', minWidth: 120},
+                        {
+                            field: 'weight', title: '重量', width: 150,
+                            templet: function (r) {
+                                if (r.weight === null || r.weight === undefined) return '-';
+                                return num(r.weight, r.name === '浮选精矿粉' ? 3 : 2)
+                                    + '<span style="color:#999"> ' + (r.weightLabel || '') + '</span>';
+                            }
+                        },
+                        {field: 'goldContent', title: '实际金含量(g)', width: 140, templet: function (r) { return num(r.goldContent, 2); }},
+                        {field: 'returnGold', title: '返金量(g)', width: 120, templet: function (r) { return num(r.returnGold, 2); }},
+                        {field: 'settled', title: '已结算(g)', width: 120, templet: function (r) { return num(r.settled, 2); }},
+                        {field: 'stock', title: '库存(g)', width: 100, templet: function (r) { return num(r.stock, 2); }},
+                        {
+                            field: 'owe', title: '欠金量(g)', width: 120,
+                            templet: function (r) {
+                                var v = Number(r.owe || 0);
+                                var cls = v < 0 ? 'layui-badge layui-bg-green' : 'layui-badge layui-bg-red';
+                                return '<span class="' + cls + '">' + num(v, 2) + '</span>';
+                            }
+                        }
+                    ]]
+                });
+            });
+        }
+
+        // ------------------------------------------------------ 按客户汇总
+        function loadBuyer() {
+            var r = rangeOf(state.month);
+            var url = '/api/sale/stats/buyer';
+            if (r.start) url += '?startDate=' + r.start + '&endDate=' + r.end;
+            get(url, function (list) {
+                var total = 0;
+                for (var i = 0; i < list.length; i++) total += Number(list[i].value || 0);
+                list.push({name: '合计', value: total});
+                table.render({
+                    elem: '#tableBuyer',
+                    data: list,
+                    page: false,
+                    done: function () {
+                        var idx = list.length - 1;
+                        $('#tableBuyer').next().find('.layui-table-body tr[data-index="' + idx + '"]')
+                            .addClass('rich-total-row');
+                    },
+                    cols: [[
+                        {field: 'name', title: '客户', minWidth: 110},
+                        {
+                            field: 'value', title: '实际金含量(g)', minWidth: 150,
+                            templet: function (r) { return num(r.value, 2); }
+                        }
+                    ]]
+                });
+            });
+        }
+
+        // ------------------------------------------------------ 点价统计
+        var pricingAll = [];
+        get('/api/sale/pricing/list', function (list) {
+            pricingAll = list;
+            addMonths(list, 'priceDate');
+            renderMonths();
+            renderPricing();
+        });
+
+        function renderPricing() {
+            var rows = pricingAll.filter(function (r) {
+                return inMonth(r.priceDate, state.month);
+            });
+            table.render({
+                elem: '#tablePricing',
+                data: rows,
+                page: false,
+                cols: [[
+                    {field: 'groupTag', title: '分类', width: 110},
+                    {field: 'variety', title: '点价种类', minWidth: 150},
+                    {field: 'priceDate', title: '点价日', width: 120},
+                    {field: 'fixPrice', title: '点价(元/g)', width: 120, templet: function (r) { return num(r.fixPrice, 2); }},
+                    {field: 'settlePrice', title: '结算价(元/g)', width: 120, templet: function (r) { return num(r.settlePrice, 2); }},
+                    {field: 'quantity', title: '点价数量(g)', width: 120, templet: function (r) { return num(r.quantity, 2); }},
+                    {field: 'avgPrice', title: '均价(元/g)', width: 120, templet: function (r) { return num(r.avgPrice, 2); }},
+                    {field: 'amount', title: '成交额(元)', width: 140, templet: function (r) { return num(r.amount, 2); }},
+                    {field: 'remark', title: '备注', minWidth: 140}
+                ]]
+            });
+        }
+
+        // ------------------------------------------------------ 提金结算
+        var settleAll = [];
+        get('/api/sale/settlement/list', function (list) {
+            settleAll = list;
+            addMonths(list, 'goldPickDate');
+            renderMonths();
+            renderSettle();
+        });
+
+        function renderSettle() {
+            var rows = settleAll.filter(function (r) {
+                return inMonth(r.goldPickDate, state.month);
+            });
+            table.render({
+                elem: '#tableSettle',
+                data: rows,
+                page: false,
+                cols: [[
+                    {field: 'category', title: '类别', width: 120},
+                    {field: 'batchNo', title: '结算批次', minWidth: 150},
+                    {field: 'goldPickDate', title: '提金日', width: 120},
+                    {field: 'settlePrice', title: '结算价(元/g)', width: 130, templet: function (r) { return num(r.settlePrice, 2); }},
+                    {field: 'goldWeight', title: '提金量(g)', width: 120, templet: function (r) { return num(r.goldWeight, 2); }},
+                    {field: 'settleAmount', title: '结算金额(元)', width: 140, templet: function (r) { return num(r.settleAmount, 2); }},
+                    {
+                        field: 'invoiceStatus', title: '开票情况', width: 130,
+                        templet: function (r) {
+                            if (!r.invoiceStatus) return '-';
+                            var done = r.invoiceStatus.indexOf('已') === 0;
+                            return '<span class="layui-badge ' + (done ? 'layui-bg-green' : 'layui-bg-orange') + '">'
+                                + r.invoiceStatus + '</span>';
+                        }
+                    },
+                    {field: 'remark', title: '备注', minWidth: 140}
+                ]]
+            });
+        }
+
+        // ------------------------------------------------------ 点价情况
+        table.render({
+            elem: '#tableFix',
+            url: '/api/sale/fix/list',
+            method: 'get',
+            page: false,
+            cols: [[
+                {field: 'statYear', title: '年度', width: 90},
+                {field: 'variety', title: '点价种类', minWidth: 150},
+                {field: 'prevBalance', title: '上年余量(g)', width: 130, templet: function (r) { return num(r.prevBalance, 2); }},
+                {field: 'fixQty', title: '点价量(g)', width: 120, templet: function (r) { return num(r.fixQty, 2); }},
+                {field: 'shippedQty', title: '已发货量(g)', width: 130, templet: function (r) { return num(r.shippedQty, 2); }},
+                {field: 'extractedQty', title: '已提金(g)', width: 120, templet: function (r) { return num(r.extractedQty, 2); }},
+                {field: 'stockQty', title: '库存(g)', width: 100, templet: function (r) { return num(r.stockQty, 2); }},
+                {field: 'oweQty', title: '欠金量(g)', width: 120, templet: function (r) { return num(r.oweQty, 2); }},
+                {field: 'remark', title: '备注', minWidth: 160}
+            ]]
+        });
+
+        // ------------------------------------------------------ 交互
+        $('#btnQuery').on('click', function () {
+            state.month = $('#monthSelect').val();
+            loadProduct();
+            loadBuyer();
+            renderPricing();
+            renderSettle();
+        });
+
+        $('#btnExport').on('click', function () {
+            if (!state.productRows.length) {
+                layer.msg('暂无可导出的数据');
+                return;
+            }
+            var name = state.month ? ('销售汇总_' + state.month) : '销售汇总_全部';
+            try {
+                table.exportFile('tableProduct', state.productRows, 'csv', name);
+            } catch (e) {
+                layer.msg('当前 layui 版本不支持导出，请直接复制表格');
+            }
+        });
+
+        // 跳转到可视化大屏（若不在框架内则直接打开）
+        $('#btnDashboard').on('click', function () {
+            try {
+                if (parent && parent.layui && parent.layui.admin) {
+                    parent.layui.admin.openTabsPage({url: '/sale/dashboard', title: '可视化大屏'});
+                    return;
+                }
+            } catch (e) {
+                // 忽略，走兜底
+            }
+            window.open('/sale/dashboard', '_blank');
+        });
+
+        // 首次加载
+        loadProduct();
+        loadBuyer();
+    });
+</script>
+</body>
+</html>

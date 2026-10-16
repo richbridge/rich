@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>食堂财务</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
+        .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .kpi-card {
+            flex: 1; min-width: 150px; background: #fff; border-radius: 4px; padding: 14px 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+        }
+        .kpi-label { color: #8a9099; font-size: 13px; }
+        .kpi-value { font-size: 21px; font-weight: 600; color: #1f2329; margin-top: 5px; line-height: 1.2; }
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 5px; }
+        /* 页签内容区高度恒定：切换页签时页面总高不变，
+           不会在「是否出现滚动条」的临界点来回抖动 */
+        .layui-tab-card > .layui-tab-content { padding: 10px; min-height: 560px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">账面余额</div>
+            <div class="kpi-value" id="kpiBalance">-</div>
+            <div class="kpi-sub">累计流水 <span id="kpiCount">0</span> 笔</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">本年收入</div>
+            <div class="kpi-value" id="kpiIn" style="color:#18a058">-</div>
+            <div class="kpi-sub">就餐收入 + 充值 + 其他</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">本年支出</div>
+            <div class="kpi-value" id="kpiOut" style="color:#e13c3c">-</div>
+            <div class="kpi-sub">采购付款 + 费用支出</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">本年结余</div>
+            <div class="kpi-value" id="kpiYearProfit">-</div>
+            <div class="kpi-sub">收入 − 支出</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">饭卡结余</div>
+            <div class="kpi-value" id="kpiCard">-</div>
+            <div class="kpi-sub">持卡 <span id="kpiCardCnt">0</span> 张</div>
+        </div>
+    </div>
+
+    <div class="layui-tab layui-tab-card" lay-filter="mainTab">
+        <ul class="layui-tab-title">
+            <li class="layui-this">收支台账</li>
+            <li>费用支出</li>
+            <li>饭卡管理</li>
+            <li>月度经营表</li>
+        </ul>
+        <div class="layui-tab-content">
+
+            <!-- 收支台账 -->
+            <div class="layui-tab-item layui-show">
+                <div class="search-bar">
+                    <form class="layui-form" lay-filter="accSearch">
+                        <div class="layui-form-item">
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:200px">
+                                    <input type="text" id="accRange" placeholder="日期范围" class="layui-input">
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:110px">
+                                    <select name="direction">
+                                        <option value="">全部方向</option>
+                                        <option value="收入">收入</option>
+                                        <option value="支出">支出</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:130px">
+                                    <select name="accountType">
+                                        <option value="">全部科目</option>
+                                        <option value="营业收入">营业收入</option>
+                                        <option value="餐卡充值">餐卡充值</option>
+                                        <option value="采购付款">采购付款</option>
+                                        <option value="费用支出">费用支出</option>
+                                        <option value="盘盈盘亏">盘盈盘亏</option>
+                                        <option value="上级拨入">上级拨入</option>
+                                        <option value="内部转账">内部转账</option>
+                                        <option value="其他收入">其他收入</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:170px">
+                                    <input type="text" name="keywords" placeholder="摘要 / 对方 / 单号"
+                                           autocomplete="off" class="layui-input">
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="accSearchBtn">查询</button>
+                                <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm" id="accReset">重置</button>
+                                <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" id="addAccBtn">手工记账</button>
+                                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="recalcBtn">重算余额</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <table class="layui-hide" id="accountTable" lay-filter="accountTable"></table>
+            </div>
+
+            <!-- 费用支出 -->
+            <div class="layui-tab-item">
+                <div class="search-bar">
+                    <form class="layui-form" lay-filter="feeSearch">
+                        <div class="layui-form-item">
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:150px">
+                                    <select name="feeType">
+                                        <option value="">全部类别</option>
+                                        <option value="燃料动力">燃料动力</option>
+                                        <option value="水电燃气">水电燃气</option>
+                                        <option value="设备维修">设备维修</option>
+                                        <option value="低值易耗">低值易耗</option>
+                                        <option value="劳保用品">劳保用品</option>
+                                        <option value="保洁防疫">保洁防疫</option>
+                                        <option value="劳务用工">劳务用工</option>
+                                        <option value="检测检验">检测检验</option>
+                                        <option value="其他支出">其他支出</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:120px">
+                                    <select name="payStatus">
+                                        <option value="">全部付款</option>
+                                        <option value="未付款">未付款</option>
+                                        <option value="已付款">已付款</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="feeSearchBtn">查询</button>
+                                <button type="button" class="layui-btn layui-btn-sm" id="addFeeBtn">登记费用</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <table class="layui-hide" id="feeTable" lay-filter="feeTable"></table>
+            </div>
+
+            <!-- 饭卡 -->
+            <div class="layui-tab-item">
+                <div class="search-bar">
+                    <form class="layui-form" lay-filter="cardSearch">
+                        <div class="layui-form-item">
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:170px">
+                                    <input type="text" name="keywords" placeholder="卡号 / 持卡人"
+                                           autocomplete="off" class="layui-input">
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <div class="layui-input-inline" style="width:130px">
+                                    <select name="deptName" id="cardDept">
+                                        <option value="">全部部门</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <button class="layui-btn layui-btn-sm" lay-submit lay-filter="cardSearchBtn">查询</button>
+                                <button type="button" class="layui-btn layui-btn-sm" id="addCardBtn">新增饭卡</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <table class="layui-hide" id="cardTable" lay-filter="cardTable"></table>
+            </div>
+
+            <!-- 月度经营表 -->
+            <div class="layui-tab-item">
+                <div class="search-bar">
+                    <form class="layui-form">
+                        <div class="layui-form-item">
+                            <div class="layui-inline">
+                                <label class="layui-form-label" style="width:auto">年度</label>
+                                <div class="layui-input-inline" style="width:110px">
+                                    <select id="reportYear"></select>
+                                </div>
+                            </div>
+                            <div class="layui-inline">
+                                <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="loadReportBtn">生成</button>
+                            </div>
+                            <div class="layui-inline" style="line-height:38px">
+                                <span class="layui-word-aux">
+                                    经营口径：结余 = 就餐收入 − 食材成本（领用出库结转）− 运行费用
+                                </span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <table class="layui-hide" id="reportTable"></table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="accToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm layui-btn-normal" lay-event="add">手工记账</button>
+    </div>
+</script>
+<script type="text/html" id="accRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="feeToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">登记费用</button>
+    </div>
+</script>
+<script type="text/html" id="feeRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    {{# if(d.payStatus !== '已付款'){ }}
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="pay">付款</a>
+    {{# } }}
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+<script type="text/html" id="cardToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">新增饭卡</button>
+    </div>
+</script>
+<script type="text/html" id="cardRowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="recharge">充值</a>
+    <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="consume">消费</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 手工记账 -->
+<div id="accFormWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="accForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">业务日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="bizDate" id="accDate" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">收支方向</label>
+                    <div class="layui-input-block">
+                        <select name="direction">
+                            <option value="收入">收入</option>
+                            <option value="支出">支出</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">科目</label>
+                    <div class="layui-input-block">
+                        <select name="accountType">
+                            <option value="上级拨入">上级拨入</option>
+                            <option value="其他收入">其他收入</option>
+                            <option value="内部转账">内部转账</option>
+                            <option value="盘盈盘亏">盘盈盘亏</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">金额(元)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="amount" step="0.01" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">结算方式</label>
+                    <div class="layui-input-block">
+                        <select name="payType">
+                            <option value="银行转账">银行转账</option>
+                            <option value="现金">现金</option>
+                            <option value="内部往来">内部往来</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">对方单位</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="counterparty" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">摘要</label>
+            <div class="layui-input-block">
+                <input type="text" name="summary" lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">记账人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="handler" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="accSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="accCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 费用表单 -->
+<div id="feeFormWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="feeForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">单据编号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="feeNo" id="feeNo" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">费用日期</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="feeDate" id="feeDate" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">费用类别</label>
+                    <div class="layui-input-block">
+                        <select name="feeType">
+                            <option value="燃料动力">燃料动力</option>
+                            <option value="水电燃气">水电燃气</option>
+                            <option value="设备维修">设备维修</option>
+                            <option value="低值易耗">低值易耗</option>
+                            <option value="劳保用品">劳保用品</option>
+                            <option value="保洁防疫">保洁防疫</option>
+                            <option value="劳务用工">劳务用工</option>
+                            <option value="检测检验">检测检验</option>
+                            <option value="其他支出">其他支出</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">收款单位</label>
+                    <div class="layui-input-block">
+                        <select name="supplierId" id="feeSupplier" lay-search></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">金额(元)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="amount" step="0.01" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">税额(元)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="taxAmount" step="0.01" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">票据号码</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="invoiceNo" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">付款方式</label>
+                    <div class="layui-input-block">
+                        <select name="payType">
+                            <option value="银行转账">银行转账</option>
+                            <option value="现金">现金</option>
+                            <option value="公务卡">公务卡</option>
+                            <option value="签单挂账">签单挂账</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">经办人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="handler" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md4">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">审批人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="approver" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注</label>
+            <div class="layui-input-block">
+                <input type="text" name="remark" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="feeSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="feeCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<!-- 饭卡表单 -->
+<div id="cardFormWrap" style="display:none;padding:16px 18px 0">
+    <form class="layui-form" lay-filter="cardForm">
+        <input type="hidden" name="id">
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">卡号</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="cardNo" lay-verify="required" placeholder="如 FK-001"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">持卡人</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="holder" lay-verify="required" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">所属部门</label>
+                    <div class="layui-input-block">
+                        <select name="deptName" id="cardDeptSel"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">卡类型</label>
+                    <div class="layui-input-block">
+                        <select name="cardType">
+                            <option value="职工卡">职工卡</option>
+                            <option value="家属卡">家属卡</option>
+                            <option value="临时卡">临时卡</option>
+                            <option value="接待卡">接待卡</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-row layui-col-space10">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="正常">正常</option>
+                            <option value="挂失">挂失</option>
+                            <option value="注销">注销</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">备注</label>
+                    <div class="layui-input-block">
+                        <input type="text" name="remark" class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button class="layui-btn" lay-submit lay-filter="cardSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cardCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate', 'element'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.jquery;
+        var laydate = layui.laydate, element = layui.element;
+        var idx = null;
+
+        /** 表格固定高度（含分页条），见下方 table.render 的说明。 */
+        var TABLE_HEIGHT = 480;
+
+        /** 各分页签是否已初始化；隐藏容器里的表格宽度会算成 0，故按需渲染。 */
+        var inited = {fee: false, card: false, report: false};
+
+        form.render();
+        laydate.render({elem: '#accDate', value: new Date()});
+        laydate.render({elem: '#feeDate', value: new Date()});
+        laydate.render({elem: '#accRange', range: true});
+
+        var year = new Date().getFullYear();
+        var yearOpts = '';
+        for (var y = year; y >= year - 3; y--) yearOpts += '<option value="' + y + '">' + y + '</option>';
+        $('#reportYear').html(yearOpts);
+        form.render('select');
+
+        function money(v) {
+            return Number(v || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // ---------------------------------------------------------- KPI
+        function loadKpi() {
+            $.get('/api/canteen/overview', function (res) {
+                if (res.code !== 0) return;
+                var k = res.data.kpi || {};
+                $('#kpiBalance').text(money(k.accountBalance));
+                $('#kpiBalance').css('color', Number(k.accountBalance || 0) >= 0 ? '#18a058' : '#e13c3c');
+                $('#kpiCount').text(k.accountCount || 0);
+                $('#kpiCard').text(money(k.cardBalance));
+                $('#kpiCardCnt').text(k.cardCount || 0);
+            });
+            $.get('/api/canteen/account/summary', {year: year}, function (res) {
+                if (res.code !== 0) return;
+                var inSum = 0, outSum = 0;
+                (res.data || []).forEach(function (r) {
+                    if (r.direction === '收入') inSum += Number(r.amount || 0);
+                    else outSum += Number(r.amount || 0);
+                });
+                $('#kpiIn').text(money(inSum));
+                $('#kpiOut').text(money(outSum));
+                $('#kpiYearProfit').text(money(inSum - outSum));
+                $('#kpiYearProfit').css('color', (inSum - outSum) >= 0 ? '#18a058' : '#e13c3c');
+            });
+        }
+        loadKpi();
+
+        // ---------------------------------------------------------- 收支台账
+        // 固定表格高度：表格高度恒定，页面总高就不会随数据来回变化，
+        // 避免 layuiAdmin 自适应 iframe 高度时反复触发 resize 造成界面抖动。
+        table.render({
+            elem: '#accountTable', url: '/api/canteen/account/list', method: 'get',
+            toolbar: '#accToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50, 100], height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'bizDate', title: '业务日期', width: 115, align: 'center', sort: true},
+                {field: 'voucherNo', title: '记账流水号', width: 140},
+                {field: 'direction', title: '方向', width: 80, align: 'center',
+                    templet: function (r) {
+                        return r.direction === '收入'
+                                ? '<span class="layui-badge layui-bg-green">收入</span>'
+                                : '<span class="layui-badge layui-bg-red">支出</span>';
+                    }},
+                {field: 'accountType', title: '科目', width: 110},
+                {field: 'summary', title: '摘要', minWidth: 220},
+                {field: 'sourceNo', title: '来源单号', width: 130},
+                {field: 'amount', title: '金额(元)', width: 130, align: 'right',
+                    templet: function (r) {
+                        var c = r.direction === '收入' ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + ';font-weight:600">' + money(r.amount) + '</span>';
+                    }},
+                {field: 'balance', title: '余额(元)', width: 140, align: 'right',
+                    templet: function (r) { return money(r.balance); }},
+                {field: 'payType', title: '结算方式', width: 110, align: 'center'},
+                {field: 'counterparty', title: '对方单位', width: 150},
+                {field: 'handler', title: '记账人', width: 90},
+                {title: '操作', width: 80, fixed: 'right', toolbar: '#accRowBar'}
+            ]]
+        });
+
+        form.on('submit(accSearchBtn)', function (obj) {
+            var range = $('#accRange').val().split(' ~ ');
+            var where = $.extend({}, obj.field);
+            if (range.length === 2) { where.startDate = range[0].trim(); where.endDate = range[1].trim(); }
+            table.reload('accountTable', {where: where, page: {curr: 1}});
+            return false;
+        });
+        $('#accReset').on('click', function () {
+            $('#accRange').val('');
+            setTimeout(function () {
+                table.reload('accountTable', {
+                    where: {direction: '', accountType: '', keywords: '', startDate: '', endDate: ''},
+                    page: {curr: 1}
+                });
+            }, 10);
+        });
+
+        $('#recalcBtn').on('click', function () {
+            $.post('/api/canteen/account/recalc', function (res) {
+                layer.msg(res.code === 0 ? '已重算 ' + res.data + ' 笔流水余额' : (res.msg || '失败'));
+                table.reload('accountTable');
+                loadKpi();
+            });
+        });
+
+        table.on('toolbar(accountTable)', function (obj) { if (obj.event === 'add') openAcc(); });
+        $('#addAccBtn').on('click', openAcc);
+        table.on('tool(accountTable)', function (obj) {
+            if (obj.event === 'del') {
+                layer.confirm('确认删除该笔流水？删除后余额将自动重算。', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/account/delete', {id: obj.data.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('accountTable');
+                        loadKpi();
+                    });
+                });
+            }
+        });
+
+        function openAcc() {
+            form.val('accForm', {
+                id: '', direction: '收入', accountType: '上级拨入', payType: '银行转账',
+                amount: '', counterparty: '', summary: '', handler: '', remark: ''
+            });
+            $('#accDate').val(new Date().toISOString().slice(0, 10));
+            idx = layer.open({
+                type: 1, title: '手工记账', area: ['720px', '520px'], content: $('#accFormWrap'),
+                end: function () { idx = null; }
+            });
+        }
+        $('#accCancel').on('click', function () { layer.close(idx); });
+        form.on('submit(accSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.amount = Number(f.amount || 0);
+            $.ajax({
+                url: '/api/canteen/account/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(f),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已记账');
+                    table.reload('accountTable'); loadKpi();
+                }
+            });
+            return false;
+        });
+
+        // ---------------------------------------------------------- 费用支出
+        $.get('/api/canteen/supplier/all', function (res) {
+            var opts = '<option value="">未指定</option>';
+            if (res.code === 0) {
+                (res.data || []).forEach(function (s) {
+                    opts += '<option value="' + s.id + '">' + s.supplierName + '</option>';
+                });
+            }
+            $('#feeSupplier').html(opts);
+            form.render('select');
+        });
+
+        function renderFeeTable() {
+            if (inited.fee) { return; }
+            inited.fee = true;
+            table.render({
+            elem: '#feeTable', url: '/api/canteen/fee/list', method: 'get',
+            toolbar: '#feeToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50], height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'feeNo', title: '单据编号', width: 130, sort: true},
+                {field: 'feeDate', title: '费用日期', width: 110, align: 'center', sort: true},
+                {field: 'feeType', title: '费用类别', width: 110, align: 'center'},
+                {field: 'supplierName', title: '收款单位', minWidth: 170},
+                {field: 'amount', title: '金额(元)', width: 120, align: 'right',
+                    templet: function (r) { return money(r.amount); }},
+                {field: 'taxAmount', title: '税额(元)', width: 100, align: 'right',
+                    templet: function (r) { return money(r.taxAmount); }},
+                {field: 'totalAmount', title: '价税合计(元)', width: 130, align: 'right', sort: true,
+                    templet: function (r) {
+                        return '<span style="font-weight:600">' + money(r.totalAmount) + '</span>';
+                    }},
+                {field: 'invoiceNo', title: '票据号', width: 130},
+                {field: 'payType', title: '付款方式', width: 100, align: 'center'},
+                {field: 'payStatus', title: '付款', width: 100, align: 'center',
+                    templet: function (r) {
+                        return '<span class="layui-badge ' + (r.payStatus === '已付款' ? 'layui-bg-green' : '')
+                                + '">' + (r.payStatus || '-') + '</span>';
+                    }},
+                {field: 'handler', title: '经办人', width: 90},
+                {title: '操作', width: 200, fixed: 'right', toolbar: '#feeRowBar'}
+            ]]
+            });
+        }
+
+        form.on('submit(feeSearchBtn)', function (obj) {
+            renderFeeTable();
+            table.reload('feeTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        table.on('toolbar(feeTable)', function (obj) { if (obj.event === 'add') openFee(null); });
+        $('#addFeeBtn').on('click', function () { openFee(null); });
+
+        table.on('tool(feeTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') openFee(row);
+            else if (obj.event === 'pay') {
+                layer.confirm('确认支付费用单「' + row.feeNo + '」？付款后将登记支出流水。', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/fee/pay', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? res.data : (res.msg || '付款失败'));
+                        table.reload('feeTable'); table.reload('accountTable'); loadKpi();
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除费用单「' + row.feeNo + '」？', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/fee/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('feeTable'); table.reload('accountTable'); loadKpi();
+                    });
+                });
+            }
+        });
+
+        function openFee(row) {
+            renderFeeTable();
+            var d = row || {};
+            if (!d.id) {
+                $.ajax({
+                    url: '/api/canteen/fee/next-no', async: false,
+                    success: function (res) { $('#feeNo').val(res.code === 0 ? res.data : ''); }
+                });
+                $('#feeDate').val(new Date().toISOString().slice(0, 10));
+            }
+            form.val('feeForm', {
+                id: d.id || '', feeNo: d.feeNo || $('#feeNo').val(),
+                feeType: d.feeType || '水电燃气', supplierId: d.supplierId || '',
+                amount: d.amount === null || d.amount === undefined ? '' : d.amount,
+                taxAmount: d.taxAmount === null || d.taxAmount === undefined ? '' : d.taxAmount,
+                invoiceNo: d.invoiceNo || '', payType: d.payType || '银行转账',
+                handler: d.handler || '', approver: d.approver || '', remark: d.remark || ''
+            });
+            if (d.feeDate) $('#feeDate').val(d.feeDate);
+            idx = layer.open({
+                type: 1, title: row ? '编辑费用单' : '登记费用单',
+                area: ['820px', '560px'], content: $('#feeFormWrap'),
+                end: function () { idx = null; }
+            });
+        }
+        $('#feeCancel').on('click', function () { layer.close(idx); });
+        form.on('submit(feeSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            f.supplierId = f.supplierId ? Number(f.supplierId) : null;
+            f.amount = Number(f.amount || 0);
+            f.taxAmount = f.taxAmount === '' ? 0 : Number(f.taxAmount);
+            $.ajax({
+                url: '/api/canteen/fee/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(f),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('feeTable');
+                }
+            });
+            return false;
+        });
+
+        // ---------------------------------------------------------- 饭卡
+        $.get('/api/salary/dept/all', function (res) {
+            var opts = '<option value="">未指定</option>';
+            var searchOpts = '<option value="">全部部门</option>';
+            if (res.code === 0) {
+                (res.data || []).forEach(function (d) {
+                    opts += '<option value="' + d.deptName + '">' + d.deptName + '</option>';
+                    searchOpts += '<option value="' + d.deptName + '">' + d.deptName + '</option>';
+                });
+            }
+            $('#cardDeptSel').html(opts);
+            $('#cardDept').html(searchOpts);
+            form.render('select');
+        });
+
+        function renderCardTable() {
+            if (inited.card) { return; }
+            inited.card = true;
+            table.render({
+            elem: '#cardTable', url: '/api/canteen/card/list', method: 'get',
+            toolbar: '#cardToolbar', defaultToolbar: ['filter', 'exports'],
+            page: true, limit: 20, limits: [20, 50], height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'cardNo', title: '卡号', width: 110, sort: true},
+                {field: 'holder', title: '持卡人', width: 100},
+                {field: 'deptName', title: '所属部门', minWidth: 140},
+                {field: 'cardType', title: '卡类型', width: 100, align: 'center'},
+                {field: 'balance', title: '余额(元)', width: 120, align: 'right', sort: true,
+                    templet: function (r) {
+                        var c = Number(r.balance || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + ';font-weight:600">' + money(r.balance) + '</span>';
+                    }},
+                {field: 'totalRecharge', title: '累计充值(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.totalRecharge); }},
+                {field: 'totalConsume', title: '累计消费(元)', width: 130, align: 'right',
+                    templet: function (r) { return money(r.totalConsume); }},
+                {field: 'status', title: '状态', width: 90, align: 'center',
+                    templet: function (r) {
+                        return r.status === '正常'
+                                ? '<span class="layui-badge layui-bg-green">正常</span>'
+                                : '<span class="layui-badge">' + (r.status || '-') + '</span>';
+                    }},
+                {field: 'remark', title: '备注', minWidth: 140},
+                {title: '操作', width: 250, fixed: 'right', toolbar: '#cardRowBar'}
+            ]]
+            });
+        }
+
+        form.on('submit(cardSearchBtn)', function (obj) {
+            renderCardTable();
+            table.reload('cardTable', {where: obj.field, page: {curr: 1}});
+            return false;
+        });
+        table.on('toolbar(cardTable)', function (obj) { if (obj.event === 'add') openCard(null); });
+        $('#addCardBtn').on('click', function () { openCard(null); });
+
+        table.on('tool(cardTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') openCard(row);
+            else if (obj.event === 'recharge') {
+                layer.prompt({formType: 0, title: '充值金额（元）', value: '200'}, function (amount, i) {
+                    layer.close(i);
+                    $.post('/api/canteen/card/recharge', {
+                        id: row.id, amount: amount, payType: '扫码支付', handler: '系统操作'
+                    }, function (res) {
+                        layer.msg(res.code === 0 ? res.data : (res.msg || '充值失败'));
+                        table.reload('cardTable'); table.reload('accountTable'); loadKpi();
+                    });
+                });
+            } else if (obj.event === 'consume') {
+                layer.prompt({formType: 0, title: '消费金额（元）', value: '15'}, function (amount, i) {
+                    layer.close(i);
+                    $.post('/api/canteen/card/consume', {
+                        id: row.id, amount: amount, summary: '窗口消费'
+                    }, function (res) {
+                        layer.msg(res.code === 0 ? res.data : (res.msg || '消费失败'));
+                        table.reload('cardTable'); loadKpi();
+                    });
+                });
+            } else if (obj.event === 'del') {
+                layer.confirm('确认注销饭卡「' + row.cardNo + '」？', function (i) {
+                    layer.close(i);
+                    $.post('/api/canteen/card/delete', {id: row.id}, function (res) {
+                        layer.msg(res.code === 0 ? '已删除' : (res.msg || '删除失败'));
+                        table.reload('cardTable'); loadKpi();
+                    });
+                });
+            }
+        });
+
+        function openCard(row) {
+            renderCardTable();
+            var d = row || {};
+            form.val('cardForm', {
+                id: d.id || '', cardNo: d.cardNo || '', holder: d.holder || '',
+                deptName: d.deptName || '', cardType: d.cardType || '职工卡',
+                status: d.status || '正常', remark: d.remark || ''
+            });
+            idx = layer.open({
+                type: 1, title: row ? '编辑饭卡' : '新增饭卡', area: ['640px', '420px'],
+                content: $('#cardFormWrap'), end: function () { idx = null; }
+            });
+        }
+        $('#cardCancel').on('click', function () { layer.close(idx); });
+        form.on('submit(cardSubmit)', function (obj) {
+            var f = obj.field;
+            f.id = f.id ? Number(f.id) : null;
+            $.ajax({
+                url: '/api/canteen/card/save', type: 'post',
+                contentType: 'application/json', data: JSON.stringify(f),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.close(idx); layer.msg('已保存'); table.reload('cardTable'); loadKpi();
+                }
+            });
+            return false;
+        });
+
+        // ---------------------------------------------------------- 月度经营表
+        function loadReport() {
+            $.get('/api/canteen/monthly-report', {year: $('#reportYear').val()}, function (res) {
+                if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
+                renderReportTable();
+                table.reload('reportTable', {data: res.data || []});
+            });
+        }
+        $('#loadReportBtn').on('click', loadReport);
+
+        function renderReportTable() {
+            if (inited.report) { return; }
+            inited.report = true;
+            table.render({
+            elem: '#reportTable', data: [], page: false,
+            totalRow: true, height: TABLE_HEIGHT,
+            cols: [[
+                {field: 'ym', title: '期间', width: 110, align: 'center'},
+                {field: 'people', title: '就餐人次', width: 120, align: 'right', totalRow: true,
+                    templet: function (r) { return Number(r.people || 0).toLocaleString('zh-CN'); }},
+                {field: 'income', title: '就餐收入(元)', minWidth: 140, align: 'right', totalRow: true,
+                    templet: function (r) {
+                        return '<span style="color:#2f7ef7">' + money(r.income) + '</span>';
+                    }},
+                {field: 'cost', title: '食材成本(元)', minWidth: 140, align: 'right', totalRow: true,
+                    templet: function (r) {
+                        return '<span style="color:#ff9f43">' + money(r.cost) + '</span>';
+                    }},
+                {field: 'fee', title: '运行费用(元)', minWidth: 140, align: 'right', totalRow: true,
+                    templet: function (r) {
+                        return '<span style="color:#7c5cff">' + money(r.fee) + '</span>';
+                    }},
+                {field: 'profit', title: '结余(元)', minWidth: 140, align: 'right', totalRow: true,
+                    templet: function (r) {
+                        var c = Number(r.profit || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        return '<span style="color:' + c + ';font-weight:600">' + money(r.profit) + '</span>';
+                    }}
+            ]]
+            });
+        }
+
+        // ---------------------------------------------------------- 页签切换
+        // 隐藏容器里的表格宽度会被算成 0，切到哪个页签才初始化哪个，
+        // 初始化后再 resize 一次把列宽校正回来。
+        element.on('tab(mainTab)', function (data) {
+            if (data.index === 1) { renderFeeTable(); }
+            else if (data.index === 2) { renderCardTable(); }
+            else if (data.index === 3) { renderReportTable(); loadReport(); }
+            setTimeout(function () {
+                ['accountTable', 'feeTable', 'cardTable', 'reportTable'].forEach(function (id) {
+                    if ($('#' + id).next('.layui-table-view').length) { table.resize(id); }
+                });
+            }, 60);
+        });
+    });
+</script>
+</body>
+</html>

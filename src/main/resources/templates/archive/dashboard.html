@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>档案总览</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .kpi-card { background: #fff; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
+        .kpi-title { color: #9aa1ab; font-size: 12px; }
+        .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; line-height: 28px; }
+        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 4px; }
+        .v-red { color: #e13c3c; }
+        .v-green { color: #18a058; }
+        .v-blue { color: #2f7ef7; }
+        .v-orange { color: #ff9f43; }
+        .chart-box { background: #fff; border-radius: 4px; padding: 12px; margin-bottom: 12px; }
+        .box-title { font-weight: 600; padding: 2px 0 8px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md2"><div class="kpi-card">
+            <div class="kpi-title">现存案卷</div>
+            <div class="kpi-value v-blue" id="kVolume">0</div>
+            <div class="kpi-sub">累计归档 <span id="kVolumeTotal">0</span> · 已销毁 <span id="kDestroyed">0</span></div>
+        </div></div>
+        <div class="layui-col-md2"><div class="kpi-card">
+            <div class="kpi-title">卷内文件</div>
+            <div class="kpi-value" id="kFile">0</div>
+            <div class="kpi-sub">总页数 <span id="kPage">0</span> 页</div>
+        </div></div>
+        <div class="layui-col-md2"><div class="kpi-card">
+            <div class="kpi-title">在库</div>
+            <div class="kpi-value v-green" id="kInStock">0</div>
+            <div class="kpi-sub">封存 <span id="kSealed">0</span> · 永久卷 <span id="kPermanent">0</span></div>
+        </div></div>
+        <div class="layui-col-md2"><div class="kpi-card">
+            <div class="kpi-title">借阅中</div>
+            <div class="kpi-value v-orange" id="kBorrowing">0</div>
+            <div class="kpi-sub">逾期未还 <span id="kOverdue" class="v-red">0</span></div>
+        </div></div>
+        <div class="layui-col-md2"><div class="kpi-card">
+            <div class="kpi-title">本年归档</div>
+            <div class="kpi-value" id="kYearArchive">0</div>
+            <div class="kpi-sub">本年借阅 <span id="kYearBorrow">0</span> 次</div>
+        </div></div>
+        <div class="layui-col-md2"><div class="kpi-card">
+            <div class="kpi-title">库房占用</div>
+            <div class="kpi-value"><span id="kUsed">0</span><span style="font-size:15px;color:#9aa1ab"> / <span id="kCapacity">0</span></span></div>
+            <div class="kpi-sub">使用率 <span id="kUseRate">0</span>% · 位置 <span id="kLocation">0</span> 个</div>
+        </div></div>
+    </div>
+
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md4"><div class="chart-box"><div id="categoryChart" style="height:260px"></div></div></div>
+        <div class="layui-col-md4"><div class="chart-box"><div id="yearChart" style="height:260px"></div></div></div>
+        <div class="layui-col-md4"><div class="chart-box"><div id="retentionChart" style="height:260px"></div></div></div>
+    </div>
+
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md6">
+            <div class="chart-box"><div id="borrowChart" style="height:280px"></div></div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="chart-box">
+                <div class="box-title">逾期未还（<span id="overdueCnt">0</span>）</div>
+                <table class="layui-hide" id="overdueTable" lay-filter="overdueTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <div class="layui-row layui-col-space10">
+        <div class="layui-col-md6">
+            <div class="chart-box">
+                <div class="box-title">7 日内到期（<span id="dueSoonCnt">0</span>）</div>
+                <table class="layui-hide" id="dueSoonTable" lay-filter="dueSoonTable"></table>
+            </div>
+        </div>
+        <div class="layui-col-md6">
+            <div class="chart-box">
+                <div class="box-title">待审批销毁清册 / 位置将满</div>
+                <table class="layui-hide" id="pendingTable" lay-filter="pendingTable"></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:src="@{/vendor/echarts/echarts.min.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'layer', 'jquery'], function () {
+        var table = layui.table, layer = layui.layer, $ = layui.jquery;
+
+        var categoryChart = echarts.init(document.getElementById('categoryChart'));
+        var yearChart = echarts.init(document.getElementById('yearChart'));
+        var retentionChart = echarts.init(document.getElementById('retentionChart'));
+        var borrowChart = echarts.init(document.getElementById('borrowChart'));
+        window.addEventListener('resize', function () {
+            categoryChart.resize(); yearChart.resize();
+            retentionChart.resize(); borrowChart.resize();
+        });
+
+        // ---------------------------------------------------------------- 提醒卡（复用一张表，靠 type 区分）
+        var overdueData = [], dueSoonData = [], pendingData = [];
+
+        function renderReminders() {
+            var rows = [];
+            pendingData.forEach(function (r) { rows.push(r); });
+            table.render({
+                elem: '#pendingTable', data: rows, page: false, height: 260,
+                cols: [[
+                    {field: 'name', title: '事项', minWidth: 180},
+                    {field: 'kind', title: '类型', width: 90, align: 'center',
+                        templet: function (r) {
+                            var color = r.kind === '销毁待审批' ? 'layui-bg-orange' : 'layui-bg-blue';
+                            return '<span class="layui-badge ' + color + '">' + (r.kind || '-') + '</span>';
+                        }},
+                    {field: 'value', title: '数量', width: 80, align: 'right'},
+                    {field: 'date', title: '日期', width: 110}
+                ]]
+            });
+        }
+
+        // ---------------------------------------------------------------- KPI
+        $.get('/api/archive/overview', function (res) {
+            if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
+            var d = res.data || {};
+            $('#kVolume').text(d.volumeAlive || 0);
+            $('#kVolumeTotal').text(d.volumeTotal || 0);
+            $('#kDestroyed').text(d.destroyed || 0);
+            $('#kFile').text(d.fileTotal || 0);
+            $('#kPage').text(d.pageTotal || 0);
+            $('#kInStock').text(d.inStock || 0);
+            $('#kSealed').text(d.sealed || 0);
+            $('#kPermanent').text(d.permanent || 0);
+            $('#kBorrowing').text(d.borrowing || 0);
+            $('#kOverdue').text(d.overdue || 0);
+            $('#kYearArchive').text(d.yearArchive || 0);
+            $('#kYearBorrow').text(d.yearBorrow || 0);
+            $('#kUsed').text(d.used || 0);
+            $('#kCapacity').text(d.capacity || 0);
+            $('#kLocation').text(d.locationTotal || 0);
+            $('#kUseRate').text(d.capacity ? Math.round((d.used || 0) * 100 / d.capacity) : 0);
+        });
+
+        // ---------------------------------------------------------------- 门类分布
+        $.get('/api/archive/stats/category', function (res) {
+            if (res.code !== 0) return;
+            var rows = res.data || [];
+            categoryChart.setOption({
+                title: {text: '门类分布（卷）', textStyle: {fontSize: 14}},
+                tooltip: {trigger: 'item', formatter: '{b}: {c} 卷 ({d}%)'},
+                legend: {type: 'scroll', orient: 'vertical', right: 0, top: 30, itemWidth: 10, itemHeight: 10,
+                    textStyle: {fontSize: 11}},
+                series: [{
+                    type: 'pie', radius: ['38%', '62%'], center: ['38%', '58%'],
+                    data: rows.map(function (r) { return {name: r.name, value: r.volumeCount}; })
+                }]
+            });
+        });
+
+        // ---------------------------------------------------------------- 年度分布
+        $.get('/api/archive/stats/year', function (res) {
+            if (res.code !== 0) return;
+            var rows = res.data || [];
+            yearChart.setOption({
+                title: {text: '年度分布（卷）', textStyle: {fontSize: 14}},
+                tooltip: {trigger: 'axis'},
+                grid: {left: 50, right: 20, top: 40, bottom: 30},
+                xAxis: {type: 'category', data: rows.map(function (r) { return r.name; })},
+                yAxis: {type: 'value'},
+                series: [{
+                    name: '案卷数', type: 'bar', barWidth: '55%',
+                    data: rows.map(function (r) { return r.volumeCount; }),
+                    itemStyle: {color: '#2f7ef7'}
+                }]
+            });
+        });
+
+        // ---------------------------------------------------------------- 保管期限
+        $.get('/api/archive/stats/retention', function (res) {
+            if (res.code !== 0) return;
+            var rows = res.data || [];
+            retentionChart.setOption({
+                title: {text: '保管期限分布', textStyle: {fontSize: 14}},
+                tooltip: {trigger: 'item', formatter: '{b}: {c} 卷 ({d}%)'},
+                legend: {bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: {fontSize: 11}},
+                series: [{
+                    type: 'pie', radius: '55%', center: ['50%', '48%'],
+                    data: rows.map(function (r) { return {name: r.name, value: r.volumeCount}; })
+                }]
+            });
+        });
+
+        // ---------------------------------------------------------------- 借阅趋势
+        $.get('/api/archive/stats/borrow-trend', function (res) {
+            if (res.code !== 0) return;
+            var d = res.data || {};
+            var borrow = d.borrow || [], ret = d.return || [];
+            var months = [];
+            borrow.forEach(function (r) { if (months.indexOf(r.month) < 0) months.push(r.month); });
+            ret.forEach(function (r) { if (months.indexOf(r.month) < 0) months.push(r.month); });
+            months.sort();
+            function pick(list, m) {
+                var hit = list.filter(function (r) { return r.month === m; });
+                return hit.length ? Number(hit[0].total || 0) : 0;
+            }
+            borrowChart.setOption({
+                title: {text: '借阅趋势（近 6 个月）', textStyle: {fontSize: 14}},
+                tooltip: {trigger: 'axis'},
+                legend: {data: ['借出', '归还'], top: 0, right: 0},
+                grid: {left: 50, right: 20, top: 40, bottom: 30},
+                xAxis: {type: 'category', data: months},
+                yAxis: {type: 'value', name: '卷次'},
+                series: [
+                    {name: '借出', type: 'line', smooth: true, symbolSize: 7,
+                        data: months.map(function (m) { return pick(borrow, m); }),
+                        itemStyle: {color: '#2f7ef7'}, areaStyle: {opacity: 0.12}},
+                    {name: '归还', type: 'line', smooth: true, symbolSize: 7,
+                        data: months.map(function (m) { return pick(ret, m); }),
+                        itemStyle: {color: '#18a058'}}
+                ]
+            });
+        });
+
+        // ---------------------------------------------------------------- 提醒
+        $.get('/api/archive/reminders', function (res) {
+            if (res.code !== 0) return;
+            var d = res.data || {};
+            overdueData = d.overdue || [];
+            dueSoonData = d.dueSoon || [];
+            $('#overdueCnt').text(overdueData.length);
+            $('#dueSoonCnt').text(dueSoonData.length);
+
+            table.render({
+                elem: '#overdueTable', data: overdueData, page: false, height: 260,
+                cols: [[
+                    {field: 'volumeTitle', title: '案卷', minWidth: 170},
+                    {field: 'borrower', title: '借阅人', width: 90},
+                    {field: 'dueDate', title: '应还', width: 100},
+                    {field: 'overdueDays', title: '逾期(天)', width: 90, align: 'center',
+                        templet: function (r) {
+                            return '<span class="v-red" style="font-weight:700">' + (r.overdueDays || 0) + '</span>';
+                        }}
+                ]]
+            });
+
+            table.render({
+                elem: '#dueSoonTable', data: dueSoonData, page: false, height: 260,
+                cols: [[
+                    {field: 'volumeTitle', title: '案卷', minWidth: 190},
+                    {field: 'borrower', title: '借阅人', width: 90},
+                    {field: 'borrowerDept', title: '部门', width: 100},
+                    {field: 'dueDate', title: '应还', width: 100}
+                ]]
+            });
+
+            pendingData = [];
+            (d.destroyPending || []).forEach(function (r) {
+                pendingData.push({name: r.title || r.destroyNo, kind: '销毁待审批',
+                    value: (r.volumeCount || 0) + ' 卷', date: r.applyDate || ''});
+            });
+            (d.locationFull || []).forEach(function (r) {
+                pendingData.push({name: r.locationPath || r.locationCode || '',
+                    kind: '位置将满', value: (r.usedCount || 0) + '/' + (r.capacity || 0) + ' 卷',
+                    date: r.locationCode || ''});
+            });
+            renderReminders();
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>卷内文件</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body { background: #f2f3f5; padding: 12px; }
+        .toolbar-form { background: #fff; padding: 12px 12px 0; border-radius: 4px 4px 0 0; }
+        .table-box { background: #fff; padding: 8px; border-radius: 0 0 4px 4px; }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+    <form class="layui-form layui-form-pane toolbar-form" id="searchForm" lay-filter="searchForm">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:80px">关键词</label>
+                <div class="layui-input-inline" style="width:220px">
+                    <input type="text" name="keywords" placeholder="题名 / 文号 / 案卷号 / 责任者" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:60px">门类</label>
+                <div class="layui-input-inline" style="width:140px">
+                    <select name="category" id="sCategory"><option value="">全部</option></select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label" style="width:60px">载体</label>
+                <div class="layui-input-inline" style="width:110px">
+                    <select name="carrier">
+                        <option value="">全部</option>
+                        <option value="纸质">纸质</option>
+                        <option value="电子">电子</option>
+                        <option value="声像">声像</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <button type="button" class="layui-btn layui-btn-primary" id="searchBtn">查询</button>
+                <button type="button" class="layui-btn layui-btn-primary" id="resetBtn">重置</button>
+                <button type="button" class="layui-btn" id="addBtn">新增文件</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-box">
+        <table class="layui-hide" id="fileTable" lay-filter="fileTable"></table>
+    </div>
+</div>
+
+<!-- 文件表单 -->
+<div id="formBox" style="display:none; padding: 14px 12px 4px">
+    <form class="layui-form layui-form-pane" id="editForm" lay-filter="editForm">
+        <input type="hidden" name="id">
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">所属案卷</label>
+                <div class="layui-input-inline" style="width:420px">
+                    <select name="volumeId" id="fVolume" lay-search></select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">件号</label>
+                <div class="layui-input-inline" style="width:100px">
+                    <input type="number" name="itemNo" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">文件题名</label>
+                <div class="layui-input-inline" style="width:620px">
+                    <input type="text" name="title" class="layui-input" lay-verify="required">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">文号</label>
+                <div class="layui-input-inline" style="width:220px">
+                    <input type="text" name="docNo" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">责任者</label>
+                <div class="layui-input-inline" style="width:180px">
+                    <input type="text" name="responsible" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">成文日期</label>
+                <div class="layui-input-inline" style="width:150px">
+                    <input type="text" name="docDate" id="fDocDate" class="layui-input" placeholder="yyyy-MM-dd">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">页数</label>
+                <div class="layui-input-inline" style="width:100px">
+                    <input type="number" name="pageCount" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">页号</label>
+                <div class="layui-input-inline" style="width:120px">
+                    <input type="text" name="pageNo" placeholder="如 1-12" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">密级</label>
+                <div class="layui-input-inline" style="width:110px">
+                    <select name="security">
+                        <option value="公开">公开</option>
+                        <option value="内部">内部</option>
+                        <option value="秘密">秘密</option>
+                        <option value="机密">机密</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-inline">
+                <label class="layui-form-label">载体</label>
+                <div class="layui-input-inline" style="width:110px">
+                    <select name="carrier">
+                        <option value="纸质">纸质</option>
+                        <option value="电子">电子</option>
+                        <option value="声像">声像</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-inline">
+                <label class="layui-form-label">电子文件</label>
+                <div class="layui-input-inline" style="width:520px">
+                    <input type="text" name="filePath" placeholder="扫描件 / 电子文件路径" class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="text-align:right">
+            <button type="button" class="layui-btn" lay-submit lay-filter="saveSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button>
+        </div>
+    </form>
+</div>
+
+<script type="text/html" id="rowBar">
+    <a class="layui-btn layui-btn-xs" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery', 'laydate'], function () {
+        var table = layui.table, form = layui.form, layer = layui.layer,
+                $ = layui.jquery, laydate = layui.laydate;
+
+        laydate.render({elem: '#fDocDate'});
+
+        var tableIns = table.render({
+            elem: '#fileTable', url: '/api/archive/file/list', method: 'get',
+            page: {limit: 20, limits: [20, 50, 100]}, height: 'full-120',
+            cols: [[
+                {field: 'volumeNo', title: '案卷号', width: 150},
+                {field: 'itemNo', title: '件号', width: 70, align: 'center'},
+                {field: 'docNo', title: '文号', width: 170},
+                {field: 'title', title: '文件题名', minWidth: 260},
+                {field: 'responsible', title: '责任者', width: 120},
+                {field: 'docDate', title: '成文日期', width: 110, sort: true},
+                {field: 'pageCount', title: '页数', width: 80, align: 'right'},
+                {field: 'pageNo', title: '页号', width: 100},
+                {field: 'carrier', title: '载体', width: 80, align: 'center'},
+                {field: 'security', title: '密级', width: 80, align: 'center'},
+                {title: '操作', toolbar: '#rowBar', width: 130, fixed: 'right', align: 'center'}
+            ]]
+        });
+
+        // 门类下拉
+        $.get('/api/archive/category/list', function (res) {
+            if (res.code !== 0) return;
+            var html = '<option value="">全部</option>';
+            (res.data || []).forEach(function (c) {
+                html += '<option value="' + c.categoryName + '">' + c.categoryName + '</option>';
+            });
+            $('#sCategory').html(html);
+            form.render('select');
+        });
+
+        // 案卷下拉（供新增文件时选择所属案卷）
+        var volumeHtml = '';
+        function loadVolumes(selected) {
+            $.get('/api/archive/volume/list', {limit: 1000}, function (res) {
+                if (res.code !== 0) return;
+                volumeHtml = '';
+                (res.data || []).forEach(function (v) {
+                    volumeHtml += '<option value="' + v.id + '"'
+                            + (String(v.id) === String(selected || '') ? ' selected' : '') + '>'
+                            + v.volumeNo + ' ' + v.title + '</option>';
+                });
+                $('#fVolume').html(volumeHtml);
+                form.render('select');
+            });
+        }
+
+        $('#searchBtn').on('click', function () {
+            tableIns.reload({where: form.val('searchForm'), page: {curr: 1}});
+        });
+        $('#resetBtn').on('click', function () {
+            form.val('searchForm', {keywords: '', category: '', carrier: ''});
+            tableIns.reload({where: {}, page: {curr: 1}});
+        });
+
+        function openForm(data) {
+            loadVolumes(data ? data.volumeId : '');
+            layer.open({
+                type: 1, title: data ? '编辑文件' : '新增文件', area: ['780px', '480px'],
+                content: $('#formBox'), success: function () {
+                    var val = data || {};
+                    form.val('editForm', {
+                        id: val.id || '', volumeId: val.volumeId || '', itemNo: val.itemNo || 1,
+                        title: val.title || '', docNo: val.docNo || '',
+                        responsible: val.responsible || '', docDate: val.docDate || '',
+                        pageCount: val.pageCount || 1, pageNo: val.pageNo || '',
+                        security: val.security || '内部', carrier: val.carrier || '纸质',
+                        filePath: val.filePath || ''
+                    });
+                    form.render('select');
+                }
+            });
+        }
+
+        $('#addBtn').on('click', function () { openForm(null); });
+        $('#cancelBtn').on('click', function () { layer.closeAll('page'); });
+
+        form.on('submit(saveSubmit)', function (obj) {
+            var data = obj.field;
+            data.volumeId = Number(data.volumeId);
+            data.itemNo = Number(data.itemNo || 0);
+            data.pageCount = Number(data.pageCount || 0);
+            $.ajax({
+                url: '/api/archive/file/save', type: 'post', contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    if (res.code !== 0) { layer.msg(res.msg || '保存失败'); return; }
+                    layer.msg('保存成功');
+                    layer.closeAll('page');
+                    tableIns.reload();
+                }
+            });
+        });
+
+        table.on('tool(fileTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除文件「' + row.title + '」？', function (index) {
+                    $.post('/api/archive/file/delete', {id: row.id}, function (res) {
+                        if (res.code !== 0) { layer.msg(res.msg || '删除失败'); return; }
+                        layer.msg('已删除');
+                        layer.close(index);
+                        tableIns.reload();
+                    });
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html>

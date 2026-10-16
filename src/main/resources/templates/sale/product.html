@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>产品管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
+    <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <style>
+        body {
+            background: #f2f3f5;
+            padding: 12px;
+        }
+
+        .rich-card-gap {
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layui-fluid" style="padding: 0">
+
+    <!-- 搜索区 -->
+    <div class="layui-card rich-card-gap">
+        <div class="layui-card-body">
+            <form class="layui-form" id="searchForm">
+                <div class="layui-form-item" style="display:inline-block;width:230px;margin-bottom:0">
+                    <input type="text" name="keywords" placeholder="编号 / 名称" autocomplete="off"
+                           class="layui-input">
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:140px;margin-bottom:0">
+                    <select name="category">
+                        <option value="">全部品类</option>
+                        <option value="贵金属">贵金属</option>
+                        <option value="工业金属">工业金属</option>
+                    </select>
+                </div>
+                <div class="layui-form-item" style="display:inline-block;width:120px;margin-bottom:0">
+                    <select name="status">
+                        <option value="">全部状态</option>
+                        <option value="1">在售</option>
+                        <option value="0">下架</option>
+                    </select>
+                </div>
+                <button class="layui-btn" lay-submit lay-filter="searchBtn">搜索</button>
+                <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 列表 -->
+    <div class="layui-card">
+        <div class="layui-card-body">
+            <table class="layui-hide" id="productTable" lay-filter="productTable"></table>
+        </div>
+    </div>
+
+</div>
+
+<!-- 头部工具栏 -->
+<script type="text/html" id="productToolbar">
+    <div class="layui-btn-container">
+        <button class="layui-btn layui-btn-sm" lay-event="add">
+            <i class="layui-icon layui-icon-add-1"></i>新增产品
+        </button>
+    </div>
+</script>
+
+<!-- 行操作 -->
+<script type="text/html" id="productRowBar">
+    <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del">删除</a>
+</script>
+
+<!-- 产品表单 -->
+<div id="productFormWrap" style="display: none;">
+    <form class="layui-form" id="productForm" lay-filter="productForm" style="padding: 16px 24px 4px 0;">
+        <input type="hidden" name="id">
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">产品编号</label>
+            <div class="layui-input-block">
+                <input type="text" name="productNo" lay-verify="required" placeholder="如 P001"
+                       autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">产品名称</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" lay-verify="required" autocomplete="off" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">产品品类</label>
+            <div class="layui-input-block">
+                        <select name="category">
+                            <option value="贵金属">贵金属</option>
+                        <option value="工业金属">工业金属</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">计量单位</label>
+                    <div class="layui-input-block">
+                    <input type="text" name="unit" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">成本价(元)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="costPrice" step="0.01" min="0" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">销售价(元)</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="salePrice" step="0.01" min="0" autocomplete="off"
+                               class="layui-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-row">
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">库存</label>
+                    <div class="layui-input-block">
+                        <input type="number" name="stock" min="0" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+            </div>
+            <div class="layui-col-md6">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                        <select name="status">
+                            <option value="1">在售</option>
+                            <option value="0">下架</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layui-form-item" style="text-align: right;">
+            <button class="layui-btn" lay-submit lay-filter="productSubmit">保存</button>
+            <button type="button" class="layui-btn layui-btn-primary" id="productCancel">取消</button>
+        </div>
+    </form>
+</div>
+
+<script th:src="@{/layui/layui.js}"></script>
+<script th:inline="none">
+    layui.use(['table', 'form', 'layer', 'jquery'], function () {
+        var table = layui.table;
+        var form = layui.form;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        var layerIndex = null;
+
+        function money(v) {
+            var n = Number(v);
+            return (isNaN(n) ? 0 : n).toLocaleString('zh-CN', {
+                minimumFractionDigits: 2, maximumFractionDigits: 2
+            });
+        }
+
+        function esc(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        table.render({
+            elem: '#productTable',
+            url: '/api/product/list',
+            method: 'get',
+            toolbar: '#productToolbar',
+            defaultToolbar: ['filter', 'exports'],
+            page: true,
+            limit: 10,
+            limits: [10, 20, 50],
+            cols: [[
+                {type: 'checkbox', fixed: 'left'},
+                {field: 'productNo', title: '产品编号', width: 120, sort: true},
+                {field: 'name', title: '产品名称', minWidth: 200},
+                {field: 'category', title: '品类', width: 120},
+                {field: 'unit', title: '单位', width: 80},
+                {field: 'costPrice', title: '成本价(元)', width: 140, templet: function (r) { return money(r.costPrice); }},
+                {field: 'salePrice', title: '销售价(元)', width: 140, templet: function (r) { return money(r.salePrice); }},
+                {field: 'stock', title: '库存', width: 100, sort: true},
+                {
+                    field: 'status', title: '状态', width: 90,
+                    templet: function (r) {
+                        return r.status === 1
+                            ? '<span class="layui-badge layui-bg-green">在售</span>'
+                            : '<span class="layui-badge">下架</span>';
+                    }
+                },
+                {title: '操作', width: 130, fixed: 'right', toolbar: '#productRowBar'}
+            ]]
+        });
+
+        form.on('submit(searchBtn)', function (data) {
+            table.reload('productTable', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        table.on('toolbar(productTable)', function (obj) {
+            if (obj.event === 'add') {
+                openForm(null);
+            }
+        });
+
+        table.on('tool(productTable)', function (obj) {
+            var row = obj.data;
+            if (obj.event === 'edit') {
+                openForm(row);
+            } else if (obj.event === 'del') {
+                layer.confirm('确认删除产品「' + esc(row.name) + '」吗？', {icon: 3, title: '提示'}, function (i) {
+                    layer.close(i);
+                    $.post('/api/product/delete', {id: row.id}, function (res) {
+                        if (res.code === 0) {
+                            layer.msg('删除成功', {icon: 1});
+                        table.reload('productTable');
+                        } else {
+                            layer.msg(res.msg || '删除失败');
+                        }
+                    });
+                });
+            }
+        });
+
+        function openForm(row) {
+            var data = row || {};
+            form.val('productForm', {
+                id: data.id || '',
+                productNo: data.productNo || '',
+                name: data.name || '',
+                category: data.category || '贵金属',
+                unit: data.unit || '',
+                costPrice: data.costPrice || 0,
+                salePrice: data.salePrice || 0,
+                stock: data.stock || 0,
+                status: data.status === undefined ? 1 : data.status
+            });
+            layerIndex = layer.open({
+                type: 1,
+                title: row ? '编辑产品' : '新增产品',
+                area: ['720px', '480px'],
+                content: $('#productFormWrap'),
+                shadeClose: false,
+                end: function () {
+                    layerIndex = null;
+                }
+            });
+        }
+
+        form.on('submit(productSubmit)', function (data) {
+            var payload = {
+                id: data.field.id ? Number(data.field.id) : null,
+                productNo: data.field.productNo,
+                name: data.field.name,
+                category: data.field.category,
+                unit: data.field.unit,
+                costPrice: Number(data.field.costPrice || 0),
+                salePrice: Number(data.field.salePrice || 0),
+                stock: Number(data.field.stock || 0),
+                status: Number(data.field.status)
+            };
+            $.ajax({
+                url: '/api/product/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.code === 0) {
+                        layer.msg('保存成功', {icon: 1});
+                        layer.close(layerIndex);
+                        table.reload('productTable');
+                    } else {
+                        layer.msg(res.msg || '保存失败');
+                    }
+                },
+                error: function () {
+                    layer.msg('请求异常，请稍后重试');
+                }
+            });
+            return false;
+        });
+
+        $('#productCancel').on('click', function () {
+            if (layerIndex !== null) layer.close(layerIndex);
+        });
+    });
+</script>
+</body>
+</html>
