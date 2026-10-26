@@ -8,26 +8,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .scan-panel { background: #fff; padding: 18px; border-radius: 4px; }
         .code-input { height: 52px !important; font-size: 20px !important;
             font-family: Consolas, monospace; letter-spacing: 1px; }
-        .subject-card { background: #f7f9fc; border: 1px solid #e6ebf2; border-radius: 4px;
+        .subject-card { background: #FAFAFA; border: 1px solid #e6ebf2; border-radius: 4px;
             padding: 14px 16px; margin-top: 14px; min-height: 120px; }
-        .subject-card.empty { color: #9aa1ab; text-align: center; padding-top: 46px; }
+        .subject-card.empty { color: #999999; text-align: center; padding-top: 46px; }
         .subject-name { font-size: 18px; font-weight: 600; color: #1f2d3d; }
-        .subject-meta { color: #7a869a; font-size: 13px; margin-top: 6px; line-height: 22px; }
-        .book-qty { font-size: 26px; font-weight: 700; color: #2f7ef7; }
-        .hit-ok { color: #18a058; font-weight: 600; }
-        .hit-profit { color: #e13c3c; font-weight: 600; }
-        .hit-loss { color: #18a058; font-weight: 600; }
+        .subject-meta { color: #999999; font-size: 13px; margin-top: 6px; line-height: 22px; }
+        .book-qty { font-size: 26px; font-weight: 700; color: #2386EE; }
+        .hit-ok { color: #1BA854; font-weight: 600; }
+        .hit-profit { color: #FB2323; font-weight: 600; }
+        .hit-loss { color: #1BA854; font-weight: 600; }
         .log-row { padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
         .log-row:last-child { border-bottom: none; }
         .right-panel { background: #fff; padding: 14px; border-radius: 4px; }
         .stat-mini { display: inline-block; min-width: 80px; text-align: center; padding: 0 10px; }
         .stat-mini .v { font-size: 22px; font-weight: 700; }
-        .stat-mini .t { color: #9aa1ab; font-size: 12px; }
+        .stat-mini .t { color: #999999; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -91,13 +92,13 @@
                 <div id="statMini" style="text-align:center;padding:6px 0 12px">
                     <span class="stat-mini"><span class="t">应盘</span><br><span class="v" id="mSubject">0</span></span>
                     <span class="stat-mini"><span class="t">已盘</span><br><span class="v" id="mChecked">0</span></span>
-                    <span class="stat-mini"><span class="t">盘盈</span><br><span class="v" id="mProfit" style="color:#e13c3c">0</span></span>
-                    <span class="stat-mini"><span class="t">盘亏</span><br><span class="v" id="mLoss" style="color:#18a058">0</span></span>
+                    <span class="stat-mini"><span class="t">盘盈</span><br><span class="v" id="mProfit" style="color:#FB2323">0</span></span>
+                    <span class="stat-mini"><span class="t">盘亏</span><br><span class="v" id="mLoss" style="color:#1BA854">0</span></span>
                 </div>
                 <div style="border-top:1px solid #eee;padding-top:10px">
                     <div style="font-weight:600;margin-bottom:6px">本次盘点流水（最新 15 条）</div>
                     <div id="logBox" style="max-height:420px;overflow:auto">
-                        <div style="color:#9aa1ab;padding:20px 0;text-align:center">暂无记录</div>
+                        <div style="color:#999999;padding:20px 0;text-align:center">暂无记录</div>
                     </div>
                 </div>
             </div>
@@ -195,7 +196,7 @@
                     checkedText = '　<span class="' + cls + '">已登记：' + d.actualQty + '（' + txt + '）</span>';
                 }
                 $('#subjectCard').removeClass('empty').html(
-                        '<div class="subject-name">' + d.name + '　<span style="font-size:13px;color:#7a869a">'
+                        '<div class="subject-name">' + d.name + '　<span style="font-size:13px;color:#999999">'
                         + typeLabel(d.subjectType) + '</span>' + checkedText + '</div>'
                         + '<div class="subject-meta">编码 ' + (d.code || '-') + '　规格 ' + (d.spec || '-')
                         + '　单位 ' + (d.unit || '-') + '<br>分类 ' + (d.category || '-')
@@ -258,14 +259,14 @@
 
         function renderLogs() {
             if (!logs.length) {
-                $('#logBox').html('<div style="color:#9aa1ab;padding:20px 0;text-align:center">暂无记录</div>');
+                $('#logBox').html('<div style="color:#999999;padding:20px 0;text-align:center">暂无记录</div>');
                 return;
             }
             var html = '';
             logs.slice(0, 15).forEach(function (l, i) {
-                html += '<div class="log-row"><span style="color:#2f7ef7;font-weight:600">'
+                html += '<div class="log-row"><span style="color:#2386EE;font-weight:600">'
                         + (i === 0 ? '● ' : '') + '</span>' + l.name
-                        + '　<span style="color:#9aa1ab;font-family:Consolas">' + l.code + '</span>'
+                        + '　<span style="color:#999999;font-family:Consolas">' + l.code + '</span>'
                         + '　实盘 <b>' + l.qty + '</b>'
                         + '　<span style="color:#bbb;float:right">' + l.time + '</span></div>';
             });

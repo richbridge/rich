@@ -52,6 +52,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                             "/vendor/**",
                             "/css/**",
                             "/js/**",
+                            "/img/**",
                             "/images/**",
                             "/favicon.ico"
                     )

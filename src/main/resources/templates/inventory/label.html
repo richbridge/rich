@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .toolbar { background: #fff; padding: 12px 14px; border-radius: 4px; margin-bottom: 12px; }
         .label-grid { background: #fff; padding: 16px; border-radius: 4px; }
         .label-item { float: left; width: 220px; border: 1px solid #d8dde3; border-radius: 4px;
@@ -60,7 +61,7 @@
                         为未赋码标的批量赋码
                     </button>
                 </div>
-                <div class="layui-inline" style="color:#9aa1ab;font-size:12px">
+                <div class="layui-inline" style="color:#999999;font-size:12px">
                     打印建议：A4 纸，每张可排 8~10 枚标签，裁剪后贴于资产铭牌或货架
                 </div>
             </div>
@@ -68,7 +69,7 @@
     </div>
 
     <div class="label-grid">
-        <div id="labelBox" style="color:#9aa1ab;padding:40px 0;text-align:center">
+        <div id="labelBox" style="color:#999999;padding:40px 0;text-align:center">
             选择类型后点击「生成标签」
         </div>
         <div class="clear"></div>
@@ -129,7 +130,7 @@
                 if (res.code !== 0) { layer.msg(res.msg || '加载失败'); return; }
                 var list = res.data || [];
                 if (!list.length) {
-                    $('#labelBox').html('<div style="color:#9aa1ab;padding:40px 0;text-align:center">'
+                    $('#labelBox').html('<div style="color:#999999;padding:40px 0;text-align:center">'
                             + '没有符合条件的标的</div>');
                     return;
                 }

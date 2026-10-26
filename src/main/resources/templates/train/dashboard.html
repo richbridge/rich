@@ -8,25 +8,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
         .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
         .kpi-card {
             flex: 1; min-width: 150px; background: #fff; border-radius: 4px; padding: 16px 18px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
         }
-        .kpi-label { color: #8a9099; font-size: 13px; }
-        .kpi-value { font-size: 26px; font-weight: 600; color: #1f2329; margin-top: 6px; line-height: 1.2; }
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .kpi-label { color: #999999; font-size: 13px; }
+        .kpi-value { font-size: 26px; font-weight: 600; color: #212121; margin-top: 6px; line-height: 1.2; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 6px; }
         .chart-box { width: 100%; height: 300px; }
         .tip-card {
             background: #fff; border-radius: 4px; padding: 14px 16px; cursor: pointer;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: box-shadow .2s;
         }
         .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
-        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
-        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 6px; }
+        .tip-title { font-size: 14px; font-weight: 600; color: #212121; }
+        .tip-desc { font-size: 13px; color: #999999; margin-top: 6px; }
         .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
     </style>
 </head>
@@ -53,7 +54,7 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">合格人次</div>
-            <div class="kpi-value" id="kpiPass" style="color:#18a058">-</div>
+            <div class="kpi-value" id="kpiPass" style="color:#1BA854">-</div>
             <div class="kpi-sub">合格率 <span id="kpiPassRate">0</span>%</div>
         </div>
         <div class="kpi-card">
@@ -73,25 +74,25 @@
         <div class="layui-col-md3">
             <div class="tip-card" id="tipEnrolling">
                 <div class="tip-title">正在报名</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipEnrollingNum" style="color:#2f7ef7">0</span> 期培训开放报名</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipEnrollingNum" style="color:#2386EE">0</span> 期培训开放报名</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipStarting">
                 <div class="tip-title">近期开班</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipStartingNum" style="color:#ff9f43">0</span> 期 7 天内开班</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipStartingNum" style="color:#FF991C">0</span> 期 7 天内开班</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipRunning">
                 <div class="tip-title">培训进行中</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipRunningNum" style="color:#18a058">0</span> 期正在培训</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipRunningNum" style="color:#1BA854">0</span> 期正在培训</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipFailed">
                 <div class="tip-title">考核不合格</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipFailedNum" style="color:#e13c3c">0</span> 人次需补考</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipFailedNum" style="color:#FB2323">0</span> 人次需补考</div>
             </div>
         </div>
     </div>
@@ -196,7 +197,7 @@
                 {field: 'passCount', title: '合格', width: 70, align: 'center',
                     templet: function (r) {
                         return r.passCount > 0
-                            ? '<span style="color:#18a058;font-weight:600">' + r.passCount + '</span>' : '0';
+                            ? '<span style="color:#1BA854;font-weight:600">' + r.passCount + '</span>' : '0';
                     }},
                 {field: 'status', title: '状态', width: 90, align: 'center',
                     templet: function (r) {
@@ -268,7 +269,7 @@
                         return {name: r.name, value: Number(r.value || 0)};
                     })
                 }],
-                color: ['#2f7ef7', '#18a058', '#ff9f43', '#e13c3c', '#8a9099', '#7c5cff']
+                color: ['#2386EE', '#1BA854', '#FF991C', '#FB2323', '#999999', '#2386EE']
             }, true);
         }
 
@@ -285,8 +286,8 @@
                 },
                 series: [{
                     type: 'bar', barWidth: 14,
-                    itemStyle: {color: '#2f7ef7', borderRadius: [0, 3, 3, 0]},
-                    label: {show: true, position: 'right', fontSize: 11, color: '#8a9099'},
+                    itemStyle: {color: '#2386EE', borderRadius: [0, 3, 3, 0]},
+                    label: {show: true, position: 'right', fontSize: 11, color: '#999999'},
                     data: rows.map(function (r) { return Number(r.value || 0); }).reverse()
                 }]
             }, true);
@@ -303,12 +304,12 @@
                 series: [
                     {
                         name: '参训人次', type: 'bar', barWidth: 16,
-                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#2386EE', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return Number(r.total || 0); })
                     },
                     {
                         name: '合格人次', type: 'bar', barWidth: 16,
-                        itemStyle: {color: '#18a058', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#1BA854', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return Number(r.passed || 0); })
                     }
                 ]
@@ -325,17 +326,17 @@
                 series: [
                     {
                         name: '开班数', type: 'bar', barWidth: 26,
-                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#2386EE', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return Number(r.total || 0); })
                     },
                     {
                         name: '已结束', type: 'line', smooth: true, symbolSize: 7,
-                        itemStyle: {color: '#18a058'},
+                        itemStyle: {color: '#1BA854'},
                         data: rows.map(function (r) { return Number(r.done || 0); })
                     },
                     {
                         name: '计划参训', type: 'line', smooth: true, symbolSize: 7,
-                        itemStyle: {color: '#ff9f43'},
+                        itemStyle: {color: '#FF991C'},
                         data: rows.map(function (r) { return Number(r.planned || 0); })
                     }
                 ]

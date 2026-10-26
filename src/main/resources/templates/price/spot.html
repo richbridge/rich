@@ -8,12 +8,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
-        .up { color: #e13c3c; }
-        .down { color: #18a058; }
-        .flat { color: #8a9099; }
+        .up { color: #FB2323; }
+        .down { color: #1BA854; }
+        .flat { color: #999999; }
     </style>
 </head>
 <body>
@@ -105,7 +106,7 @@
             cols: [[
                 {field: 'source', title: '数据源', width: 110, templet: function (r) {
                     var name = SOURCE_NAME[r.source] || r.source;
-                    var color = r.source === 'SGE' ? '#f2a33c' : (r.source === 'SMM' ? '#5b8ff9' : '#5ad8a6');
+                    var color = r.source === 'SGE' ? '#f2a33c' : (r.source === 'SMM' ? '#5b8ff9' : '#1BA854');
                     return '<span class="layui-badge" style="background:' + color + '">' + name + '</span>';
                 }},
                 {field: 'productName', title: '品种', minWidth: 180},

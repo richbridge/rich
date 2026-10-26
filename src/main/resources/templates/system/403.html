@@ -8,45 +8,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; }
+        body {
+            background: var(--kd-bg-page);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
 
         .forbid-wrap {
+            width: 100%;
             max-width: 520px;
-            margin: 120px auto;
-            text-align: center;
-            padding: 40px 24px;
+            margin: 24px;
+            padding: 48px 32px 36px;
             background: #fff;
-            border-radius: 6px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+            border-radius: var(--kd-radius);
+            box-shadow: var(--kd-shadow-2);
+            text-align: center;
+            animation: kdZoomSpringIn var(--kd-dur-lg) var(--kd-ease-out) both;
         }
 
         .forbid-wrap .forbid-icon {
-            font-size: 72px;
-            color: #AA3130;
-            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            margin-bottom: 20px;
+            border-radius: 50%;
+            background: var(--kd-warning-bg);
+            color: var(--kd-warning);
+            font-size: 36px;
+            line-height: 72px;
+            animation: kdPulse 2.4s var(--kd-ease-std) infinite;
         }
 
         .forbid-wrap h2 {
-            margin: 18px 0 8px;
-            font-size: 22px;
-            color: #333;
+            margin: 0 0 10px;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--kd-text);
+            line-height: 28px;
         }
 
         .forbid-wrap p {
-            color: #8a8f99;
-            line-height: 1.8;
+            margin: 0;
+            color: var(--kd-text-3);
+            font-size: 13px;
+            line-height: 1.9;
+        }
+
+        .forbid-code {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 4px 12px;
+            border: 1px solid var(--kd-border-weak);
+            border-radius: var(--kd-radius);
+            background: var(--kd-bg-fill);
+            color: var(--kd-text-2);
+            font-size: 12px;
+            font-family: Consolas, Monaco, "Courier New", monospace;
+        }
+
+        .forbid-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .forbid-actions .layui-btn {
+            min-width: 104px;
         }
     </style>
 </head>
 <body>
 
 <div class="forbid-wrap">
-    <i class="layui-icon layui-icon-close-fill forbid-icon"></i>
+    <i class="layui-icon layui-icon-auz forbid-icon"></i>
     <h2>没有访问权限</h2>
     <p>当前账号未被授予该页面或接口的权限。<br>
-        请联系系统管理员在「角色权限」中为所在角色勾选对应资源。</p>
-    <p style="margin-top: 18px;">
+        请联系系统管理员，在「角色权限」中为所在角色勾选对应资源。</p>
+    <span class="forbid-code">HTTP 403 · Forbidden</span>
+    <p class="forbid-actions">
+        <button class="layui-btn" onclick="location.href = location.origin + '/';">返回工作台</button>
         <button class="layui-btn layui-btn-primary" onclick="history.back();">返回上一页</button>
     </p>
 </div>

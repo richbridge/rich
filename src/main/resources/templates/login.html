@@ -2,74 +2,292 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
-    <title>招金有色综合数智系统</title>
+    <title>登录 · 招金有色综合数智系统</title>
     <meta name="renderer" content="webkit">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/admin/style/imgs/logo.png}"/>
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
-    <link th:href="@{/admin/admin-ui/css/login.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #fff;
+        }
+
+        .kd-login {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ============================================================ 左侧视觉区
+           借鉴金蝶 K3 Cloud（招金集团数字化运营服务平台）：
+           左侧通栏金色矿山动图 + 右侧极简白面板 */
+
+        .kd-login__brand {
+            position: relative;
+            flex: 0 0 55%;
+            overflow: hidden;
+            background: #062038 url('/img/login-bg.gif') center / cover no-repeat;
+        }
+
+        .kd-login__brand-mask {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(6, 32, 56, 0) 55%, rgba(6, 32, 56, .38) 100%);
+            pointer-events: none;
+        }
+
+        .kd-login__brand-foot {
+            position: absolute;
+            left: 32px;
+            bottom: 26px;
+            color: rgba(255, 255, 255, .88);
+            font-size: 13px;
+            letter-spacing: .5px;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+            animation: kdFadeIn 1s var(--kd-ease-out) .3s both;
+        }
+
+        .kd-login__brand-foot b {
+            display: block;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+
+        /* ============================================================ 右侧登录面板 */
+
+        .kd-login__panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 32px;
+            background: #fff;
+            animation: kdFadeIn var(--kd-dur-lg) var(--kd-ease-out) both;
+        }
+
+        .kd-login__form {
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .kd-login__logo {
+            display: block;
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 18px;
+            object-fit: contain;
+            animation: kdCountIn var(--kd-dur-lg) var(--kd-ease-out) both;
+        }
+
+        .kd-login__title {
+            margin: 0;
+            color: var(--kd-text);
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 28px;
+            text-align: center;
+            letter-spacing: .5px;
+        }
+
+        .kd-login__sub {
+            margin: 8px 0 30px;
+            color: var(--kd-text-3);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .kd-login__form .layui-form-item {
+            margin-bottom: 16px;
+        }
+
+        /* 输入框：42px 高 / 4px 圆角，对齐 K3 Cloud 登录表单 */
+        .kd-login__form .layui-input-wrap {
+            border-radius: 4px;
+        }
+
+        .kd-login__form .layui-input {
+            height: 42px;
+            line-height: 40px;
+            font-size: 14px;
+            border-radius: 4px;
+            transition: border-color var(--kd-tr-color), box-shadow var(--kd-tr-base);
+        }
+
+        .kd-login__form .layui-input-wrap .layui-input-prefix {
+            line-height: 42px;
+            color: var(--kd-text-3);
+        }
+
+        .kd-login__form .layui-input-wrap:focus-within .layui-input-prefix {
+            color: var(--kd-theme);
+        }
+
+        .kd-login__row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 2px 0 22px;
+        }
+
+        .kd-login__row .layui-form-checkbox[lay-skin=primary] {
+            padding-left: 22px;
+            color: var(--kd-text-2);
+            font-size: 13px;
+        }
+
+        .kd-login__link {
+            color: var(--kd-link);
+            font-size: 13px;
+            transition: color var(--kd-tr-color);
+        }
+
+        .kd-login__link:hover {
+            color: var(--kd-theme);
+        }
+
+        /* 主按钮：45px 高 / 4px 圆角 / 全宽，K3 Cloud 同规格 */
+        .kd-login__submit {
+            width: 100%;
+            height: 45px;
+            line-height: 43px;
+            border-radius: 4px;
+            background: var(--kd-theme);
+            font-size: 15px;
+            font-weight: 400;
+            letter-spacing: 6px;
+            text-indent: 6px;
+            box-shadow: 0 4px 12px rgba(35, 134, 238, .28);
+            transition: background-color var(--kd-tr-color), box-shadow var(--kd-tr-base), transform var(--kd-tr-base);
+        }
+
+        .kd-login__submit:hover {
+            background: var(--kd-theme-5);
+            box-shadow: 0 6px 16px rgba(35, 134, 238, .36);
+            transform: translateY(-1px);
+        }
+
+        .kd-login__submit:active {
+            transform: translateY(0);
+        }
+
+        .kd-login__tip {
+            margin-top: 26px;
+            padding: 10px 14px;
+            border: 1px solid var(--kd-border-weak);
+            background: var(--kd-bg-fill);
+            border-radius: 4px;
+            color: var(--kd-text-3);
+            font-size: 12px;
+            line-height: 20px;
+            text-align: center;
+        }
+
+        .kd-login__tip b {
+            color: var(--kd-theme);
+            font-weight: 600;
+        }
+
+        .kd-login__copyright {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: var(--kd-text-4);
+            font-size: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .kd-login__brand {
+                display: none;
+            }
+
+            .kd-login__panel {
+                position: relative;
+                background: var(--kd-bg-page);
+            }
+
+            .kd-login__form {
+                max-width: 400px;
+                padding: 32px 28px 28px;
+                background: #fff;
+                border: 1px solid var(--kd-border-weak);
+                border-radius: 4px;
+                box-shadow: var(--kd-shadow-2);
+            }
+        }
+    </style>
 </head>
 <body>
 
-<div id="LAY-user-login" class="layadmin-user-login layadmin-user-display-show">
-    <div class="layadmin-user-login-main">
-        <div class="layadmin-user-login-box layadmin-user-login-header">
-            <h2>招金有色</h2>
-            <p>综合数智系统</p>
+<div class="kd-login">
+    <!-- 左侧：招金集团定制视觉（来源：金蝶 K3 Cloud 招金集团数字化运营服务平台） -->
+    <aside class="kd-login__brand">
+        <div class="kd-login__brand-mask"></div>
+        <div class="kd-login__brand-foot">
+            <b>招金有色 · 综合数智系统</b>
+            销售 · 价格 · 盘点 · 档案 · 培训 · 工资 · 食堂 · 审计
         </div>
+    </aside>
 
-        <div class="layadmin-user-login-box layadmin-user-login-body layui-form">
-            <!-- 用户名 -->
-            <div class="layui-form-item">
-                <div class="layui-input-wrap">
-                    <div class="layui-input-prefix">
-                        <i class="layui-icon layui-icon-username"></i>
+    <!-- 右侧：登录面板 -->
+    <main class="kd-login__panel">
+        <div class="kd-login__form">
+            <img class="kd-login__logo" th:src="@{/img/login-logo.png}" alt="招金">
+            <h2 class="kd-login__title">招金有色综合数智系统</h2>
+            <p class="kd-login__sub">请使用企业分配的账号登录系统</p>
+
+            <div class="layui-form">
+                <div class="layui-form-item">
+                    <div class="layui-input-wrap">
+                        <div class="layui-input-prefix">
+                            <i class="layui-icon layui-icon-username"></i>
+                        </div>
+                        <label for="username"></label>
+                        <input type="text" id="username" name="username" value=""
+                               lay-verify="required" placeholder="用户名 / 手机号 / 邮箱"
+                               lay-reqtext="请填写用户名" autocomplete="off"
+                               class="layui-input" lay-affix="clear">
                     </div>
-                    <label for="username"></label>
-                    <input type="text" id="username" name="username" value=""
-                           lay-verify="required" placeholder="用户名"
-                           lay-reqtext="请填写用户名" autocomplete="off"
-                           class="layui-input" lay-affix="clear">
+                </div>
+
+                <div class="layui-form-item">
+                    <div class="layui-input-wrap">
+                        <div class="layui-input-prefix">
+                            <i class="layui-icon layui-icon-password"></i>
+                        </div>
+                        <label for="password"></label>
+                        <input type="password" id="password" name="password" value=""
+                               lay-verify="required" placeholder="密码"
+                               lay-reqtext="请填写密码" autocomplete="off"
+                               class="layui-input" lay-affix="eye">
+                    </div>
+                </div>
+
+                <div class="kd-login__row">
+                    <input type="checkbox" name="remember" lay-skin="primary" title="记住账号">
+                    <a href="javascript:;" class="kd-login__link">找回密码</a>
+                </div>
+
+                <div class="layui-form-item" style="margin-bottom:0">
+                    <button class="layui-btn kd-login__submit" lay-submit lay-filter="rich-login">登 录</button>
                 </div>
             </div>
 
-            <!-- 密码 -->
-            <div class="layui-form-item">
-                <div class="layui-input-wrap">
-                    <div class="layui-input-prefix">
-                        <i class="layui-icon layui-icon-password"></i>
-                </div>
-                <label for="password"></label>
-                <input type="password" id="password" name="password" value=""
-                       lay-verify="required" placeholder="密码"
-                       lay-reqtext="请填写密码" autocomplete="off"
-                       class="layui-input" lay-affix="eye">
-                </div>
-            </div>
-
-            <!-- 记住账号 -->
-            <div class="layui-form-item" style="margin-bottom: 20px;">
-                <input type="checkbox" name="remember" lay-skin="primary" title="记住账号">
-                <a href="javascript:;" class="layadmin-user-jump-change layadmin-link"
-                   style="margin-top: 7px;">忘记密码？</a>
-                </div>
-
-            <!-- 登录按钮 -->
-            <div class="layui-form-item">
-                <button class="layui-btn layui-btn-fluid" lay-submit lay-filter="rich-login">登 录</button>
-            </div>
-
-            <div class="layui-trans layui-form-item" style="color:#999;font-size:13px;">
-                演示账号：admin / 123456
+            <div class="kd-login__tip">
+                演示账号 <b>admin</b> / 密码 <b>123456</b>，不同角色登录后可见菜单与接口权限不同。
             </div>
         </div>
-    </div>
 
-    <div class="layui-trans layadmin-user-login-footer">
-        <p>© 招金有色 综合数智系统</p>
-    </div>
+        <div class="kd-login__copyright">© 招金有色 · 综合数智系统</div>
+    </main>
 </div>
 
 <script th:src="@{/layui/layui.js}"></script>

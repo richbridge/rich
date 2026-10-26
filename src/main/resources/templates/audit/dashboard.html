@@ -8,9 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
         body {
-            background: #f2f3f5;
+            background: #F2F2F2;
             padding: 12px;
         }
 
@@ -27,17 +28,17 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
         }
 
-        .kpi-label { color: #8a9099; font-size: 13px; }
+        .kpi-label { color: #999999; font-size: 13px; }
 
         .kpi-value {
             font-size: 26px;
             font-weight: 600;
-            color: #1f2329;
+            color: #212121;
             margin-top: 6px;
             line-height: 1.2;
         }
 
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 6px; }
 
         .chart-box { width: 100%; height: 300px; }
 
@@ -52,9 +53,9 @@
 
         .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
 
-        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
+        .tip-title { font-size: 14px; font-weight: 600; color: #212121; }
 
-        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 6px; }
+        .tip-desc { font-size: 13px; color: #999999; margin-top: 6px; }
 
         .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
     </style>
@@ -77,7 +78,7 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">已销号</div>
-            <div class="kpi-value" id="kpiClosed" style="color:#18a058">-</div>
+            <div class="kpi-value" id="kpiClosed" style="color:#1BA854">-</div>
             <div class="kpi-sub">整改完成并销号</div>
         </div>
         <div class="kpi-card">
@@ -87,7 +88,7 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">逾期未整改</div>
-            <div class="kpi-value" id="kpiOverdue" style="color:#e13c3c">-</div>
+            <div class="kpi-value" id="kpiOverdue" style="color:#FB2323">-</div>
             <div class="kpi-sub">已过整改期限仍未销号</div>
         </div>
         <div class="kpi-card">
@@ -116,7 +117,7 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">未整改</div>
-            <div class="kpi-value" id="kpiFindingOpen" style="color:#e13c3c">-</div>
+            <div class="kpi-value" id="kpiFindingOpen" style="color:#FB2323">-</div>
             <div class="kpi-sub">检查发现仍未整改</div>
         </div>
         <div class="kpi-card">
@@ -137,19 +138,19 @@
         <div class="layui-col-md3">
             <div class="tip-card" id="tipKeep">
                 <div class="tip-title">持续整改</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipKeepNum" style="color:#2f7ef7">0</span> 项长期持续整改</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipKeepNum" style="color:#2386EE">0</span> 项长期持续整改</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipDue">
                 <div class="tip-title">整改时限临近</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipDueNum" style="color:#ff9f43">0</span> 项 7 天内到期</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipDueNum" style="color:#FF991C">0</span> 项 7 天内到期</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipOverdue">
                 <div class="tip-title">已逾期</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipOverdueNum" style="color:#e13c3c">0</span> 项已逾期未整改</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipOverdueNum" style="color:#FB2323">0</span> 项已逾期未整改</div>
             </div>
         </div>
     </div>
@@ -232,7 +233,7 @@
                 {field: 'overdueCount', title: '逾期', width: 70, align: 'center',
                     templet: function (r) {
                         return r.overdueCount > 0
-                            ? '<span style="color:#e13c3c;font-weight:600">' + r.overdueCount + '</span>'
+                            ? '<span style="color:#FB2323;font-weight:600">' + r.overdueCount + '</span>'
                             : '0';
                     }},
                 {field: 'amount', title: '问题金额', width: 120, align: 'right',
@@ -303,7 +304,7 @@
                         return {name: r.name, value: Number(r.value || 0)};
                     })
                 }],
-                color: ['#2f7ef7', '#18a058', '#ff9f43', '#e13c3c', '#8a9099']
+                color: ['#2386EE', '#1BA854', '#FF991C', '#FB2323', '#999999']
             }, true);
         }
 
@@ -321,8 +322,8 @@
                 series: [{
                     type: 'bar',
                     barWidth: 14,
-                    itemStyle: {color: '#2f7ef7', borderRadius: [0, 3, 3, 0]},
-                    label: {show: true, position: 'right', fontSize: 11, color: '#8a9099'},
+                    itemStyle: {color: '#2386EE', borderRadius: [0, 3, 3, 0]},
+                    label: {show: true, position: 'right', fontSize: 11, color: '#999999'},
                     data: rows.map(function (r) { return Number(r.value || 0); }).reverse()
                 }]
             }, true);
@@ -341,17 +342,17 @@
                 series: [
                     {
                         name: '问题数', type: 'bar', barWidth: 26,
-                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#2386EE', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return Number(r.total || 0); })
                     },
                     {
                         name: '已销号', type: 'line', smooth: true, symbolSize: 7,
-                        itemStyle: {color: '#18a058'},
+                        itemStyle: {color: '#1BA854'},
                         data: rows.map(function (r) { return Number(r.closed || 0); })
                     },
                     {
                         name: '逾期', type: 'line', smooth: true, symbolSize: 7,
-                        itemStyle: {color: '#e13c3c'},
+                        itemStyle: {color: '#FB2323'},
                         data: rows.map(function (r) { return Number(r.overdue || 0); })
                     }
                 ]

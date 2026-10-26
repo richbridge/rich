@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
     </style>
 </head>
@@ -307,7 +308,7 @@
                 {field: 'passCount', title: '合格', width: 70, align: 'center',
                     templet: function (r) {
                         return r.passCount > 0
-                            ? '<span style="color:#18a058;font-weight:600">' + r.passCount + '</span>' : '0';
+                            ? '<span style="color:#1BA854;font-weight:600">' + r.passCount + '</span>' : '0';
                     }},
                 {field: 'status', title: '状态', width: 90, align: 'center',
                     templet: function (r) {

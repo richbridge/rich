@@ -361,6 +361,12 @@ public class IndexController {
         return "archive/file";
     }
 
+    /** 门类与存放位置维护（档案模块的字典表）。 */
+    @GetMapping("/archive/basic")
+    public String archiveBasic() {
+        return "archive/basic";
+    }
+
     /** 借阅管理（登记 / 归还 / 续借 / 报失）。 */
     @GetMapping("/archive/borrow")
     public String archiveBorrow() {

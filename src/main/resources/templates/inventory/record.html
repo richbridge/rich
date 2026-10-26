@@ -8,18 +8,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .stat-bar { background: #fff; padding: 12px 14px; border-radius: 4px; margin-bottom: 12px; }
         .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
         .kpi { display: inline-block; min-width: 120px; padding: 0 18px; border-left: 1px solid #eee; }
         .kpi:first-child { border-left: none; }
-        .kpi-title { color: #9aa1ab; font-size: 12px; }
+        .kpi-title { color: #999999; font-size: 12px; }
         .kpi-value { font-size: 20px; font-weight: 600; margin-top: 4px; }
-        .kpi-value.red { color: #e13c3c; }
-        .kpi-value.green { color: #18a058; }
-        .diff-plus { color: #e13c3c; font-weight: 600; }
-        .diff-minus { color: #18a058; font-weight: 600; }
+        .kpi-value.red { color: #FB2323; }
+        .kpi-value.green { color: #1BA854; }
+        .diff-plus { color: #FB2323; font-weight: 600; }
+        .diff-minus { color: #1BA854; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -128,7 +129,7 @@
                 <div class="layui-form-item">
                     <label class="layui-form-label">账面数量</label>
                     <div class="layui-input-block">
-                        <input type="text" name="bookQty" readonly class="layui-input" style="background:#f7f7f7">
+                        <input type="text" name="bookQty" readonly class="layui-input" style="background:#FAFAFA">
                     </div>
                 </div>
             </div>

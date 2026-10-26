@@ -8,9 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
         body {
-            background: #f2f3f5;
+            background: #F2F2F2;
             padding: 12px;
         }
 
@@ -32,12 +33,12 @@
             margin: 0;
             font-size: 17px;
             font-weight: 600;
-            color: #2f3542;
+            color: #212121;
         }
 
         .rich-bar .rich-tip {
             font-size: 12px;
-            color: #99a1ae;
+            color: #999999;
             margin-left: 8px;
         }
 
@@ -50,7 +51,7 @@
         /* 合计行加粗 */
         .rich-total-row {
             font-weight: 600;
-            background: #fafbfc;
+            background: #FAFAFA;
         }
     </style>
 </head>
@@ -65,7 +66,7 @@
         </div>
         <div class="rich-inline">
             <span style="font-size:13px;color:#666">统计月份</span>
-            <select id="monthSelect" style="height:32px;border:1px solid #e6e6e6;border-radius:2px;padding:0 8px;">
+            <select id="monthSelect" style="height:32px;border:1px solid #E5E5E5;border-radius:2px;padding:0 8px;">
                 <option value="">全部月份</option>
             </select>
             <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnQuery">查询</button>

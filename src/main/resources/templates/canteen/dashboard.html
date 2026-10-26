@@ -8,25 +8,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-gap { margin-bottom: 12px; }
         .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
         .kpi-card {
             flex: 1; min-width: 158px; background: #fff; border-radius: 4px; padding: 16px 18px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
         }
-        .kpi-label { color: #8a9099; font-size: 13px; }
-        .kpi-value { font-size: 23px; font-weight: 600; color: #1f2329; margin-top: 6px; line-height: 1.2; }
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .kpi-label { color: #999999; font-size: 13px; }
+        .kpi-value { font-size: 23px; font-weight: 600; color: #212121; margin-top: 6px; line-height: 1.2; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 6px; }
         .chart-box { width: 100%; height: 288px; }
         .tip-card {
             background: #fff; border-radius: 4px; padding: 13px 16px; cursor: pointer; height: 100%;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: box-shadow .2s;
         }
         .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
-        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
-        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 5px; }
+        .tip-title { font-size: 14px; font-weight: 600; color: #212121; }
+        .tip-desc { font-size: 13px; color: #999999; margin-top: 5px; }
         .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
     </style>
 </head>
@@ -43,17 +44,17 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">就餐收入</div>
-            <div class="kpi-value" id="kpiIncome" style="color:#2f7ef7">-</div>
+            <div class="kpi-value" id="kpiIncome" style="color:#2386EE">-</div>
             <div class="kpi-sub">其中公司餐补 <span id="kpiSubsidy">-</span></div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">食材成本</div>
-            <div class="kpi-value" id="kpiCost" style="color:#ff9f43">-</div>
+            <div class="kpi-value" id="kpiCost" style="color:#FF991C">-</div>
             <div class="kpi-sub">出库单 <span id="kpiOutCnt">0</span> 张</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">运行费用</div>
-            <div class="kpi-value" id="kpiFee" style="color:#7c5cff">-</div>
+            <div class="kpi-value" id="kpiFee" style="color:#2386EE">-</div>
             <div class="kpi-sub">费用单 <span id="kpiFeeCnt">0</span> 张</div>
         </div>
         <div class="kpi-card">
@@ -73,37 +74,37 @@
         <div class="layui-col-md2">
             <div class="tip-card" id="tipLow">
                 <div class="tip-title">库存不足</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipLowNum" style="color:#e13c3c">0</span> 种低于安全库存</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipLowNum" style="color:#FB2323">0</span> 种低于安全库存</div>
             </div>
         </div>
         <div class="layui-col-md2">
             <div class="tip-card" id="tipOver">
                 <div class="tip-title">库存超储</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipOverNum" style="color:#ff9f43">0</span> 种超出上限</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipOverNum" style="color:#FF991C">0</span> 种超出上限</div>
             </div>
         </div>
         <div class="layui-col-md2">
             <div class="tip-card" id="tipNegative">
                 <div class="tip-title">负库存</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipNegativeNum" style="color:#e13c3c">0</span> 种结存为负</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipNegativeNum" style="color:#FB2323">0</span> 种结存为负</div>
             </div>
         </div>
         <div class="layui-col-md2">
             <div class="tip-card" id="tipUnpaid">
                 <div class="tip-title">应付采购款</div>
-                <div class="tip-desc"><span class="tip-num" id="tipUnpaidNum" style="color:#7c5cff">0</span> 张单据未付清</div>
+                <div class="tip-desc"><span class="tip-num" id="tipUnpaidNum" style="color:#2386EE">0</span> 张单据未付清</div>
             </div>
         </div>
         <div class="layui-col-md2">
             <div class="tip-card" id="tipDraft">
                 <div class="tip-title">待处理单据</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipDraftNum" style="color:#8a9099">0</span> 张草稿未完成</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipDraftNum" style="color:#999999">0</span> 张草稿未完成</div>
             </div>
         </div>
         <div class="layui-col-md2">
             <div class="tip-card" id="tipBalance">
                 <div class="tip-title">账面余额</div>
-                <div class="tip-desc"><span class="tip-num" id="tipBalanceNum" style="color:#18a058">0</span> 元</div>
+                <div class="tip-desc"><span class="tip-num" id="tipBalanceNum" style="color:#1BA854">0</span> 元</div>
             </div>
         </div>
     </div>
@@ -271,7 +272,7 @@
                     templet: function (r) { return money(r.subsidyAmount); }},
                 {field: 'receivable', title: '应收(元)', minWidth: 120, align: 'right',
                     templet: function (r) {
-                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.receivable) + '</span>';
+                        return '<span style="color:#2386EE;font-weight:600">' + money(r.receivable) + '</span>';
                     }},
                 {field: 'status', title: '状态', width: 100, align: 'center'}
             ]]
@@ -297,7 +298,7 @@
                 {field: 'summary', title: '摘要', minWidth: 200},
                 {field: 'amount', title: '金额(元)', width: 120, align: 'right',
                     templet: function (r) {
-                        var c = r.direction === '收入' ? '#18a058' : '#e13c3c';
+                        var c = r.direction === '收入' ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + '">' + money(r.amount) + '</span>';
                     }},
                 {field: 'balance', title: '余额(元)', width: 130, align: 'right',
@@ -318,7 +319,7 @@
                 {field: 'purchase_date', title: '入库日期', width: 120, align: 'center'},
                 {field: 'amount', title: '未付金额(元)', width: 150, align: 'right',
                     templet: function (r) {
-                        return '<span style="color:#e13c3c;font-weight:600">' + money(r.amount) + '</span>';
+                        return '<span style="color:#FB2323;font-weight:600">' + money(r.amount) + '</span>';
                     }}
             ]]
         });
@@ -343,7 +344,7 @@
             $('#kpiProfitRate').text((k.profitRate || 0) + '%');
             $('#kpiStock').text(money(k.stockAmount));
             $('#kpiStockCnt').text(k.stockCount || 0);
-            $('#kpiProfit').css('color', Number(k.profit || 0) >= 0 ? '#18a058' : '#e13c3c');
+            $('#kpiProfit').css('color', Number(k.profit || 0) >= 0 ? '#1BA854' : '#FB2323');
 
             var w = d.warn || {};
             $('#tipLowNum').text(w.lowStock || 0);
@@ -353,7 +354,7 @@
             $('#tipBalanceNum').text(money(k.accountBalance));
             var unpaid = w.unpaidPurchase || [];
             $('#tipUnpaidNum').text(unpaid.length);
-            $('#tipBalanceNum').css('color', Number(k.accountBalance || 0) >= 0 ? '#18a058' : '#e13c3c');
+            $('#tipBalanceNum').css('color', Number(k.accountBalance || 0) >= 0 ? '#1BA854' : '#FB2323');
             unpaidIns.reload({data: unpaid});
 
             // 月度趋势
@@ -366,15 +367,15 @@
                 yAxis: {type: 'value', name: '万元', axisLabel: {formatter: '{value}'}},
                 series: [
                     {
-                        name: '就餐收入', type: 'bar', itemStyle: {color: '#2f7ef7'}, barMaxWidth: 28,
+                        name: '就餐收入', type: 'bar', itemStyle: {color: '#2386EE'}, barMaxWidth: 28,
                         data: trend.map(function (r) { return Number(Number(r.income / 10000).toFixed(2)); })
                     },
                     {
-                        name: '食材成本', type: 'bar', itemStyle: {color: '#ff9f43'}, barMaxWidth: 28,
+                        name: '食材成本', type: 'bar', itemStyle: {color: '#FF991C'}, barMaxWidth: 28,
                         data: trend.map(function (r) { return Number(Number(r.cost / 10000).toFixed(2)); })
                     },
                     {
-                        name: '运行费用', type: 'line', smooth: true, itemStyle: {color: '#7c5cff'},
+                        name: '运行费用', type: 'line', smooth: true, itemStyle: {color: '#2386EE'},
                         data: trend.map(function (r) { return Number(Number(r.fee / 10000).toFixed(2)); })
                     }
                 ]
@@ -405,7 +406,7 @@
                 xAxis: {type: 'value', name: '万元'},
                 yAxis: {type: 'category', data: suppliers.map(function (r) { return r.name; })},
                 series: [{
-                    type: 'bar', barMaxWidth: 16, itemStyle: {color: '#18a058'},
+                    type: 'bar', barMaxWidth: 16, itemStyle: {color: '#1BA854'},
                     data: suppliers.map(function (r) { return Number(Number(r.value / 10000).toFixed(2)); })
                 }]
             });

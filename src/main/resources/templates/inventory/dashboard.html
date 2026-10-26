@@ -8,18 +8,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .kpi-card { background: #fff; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
-        .kpi-title { color: #9aa1ab; font-size: 12px; }
+        .kpi-title { color: #999999; font-size: 12px; }
         .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; line-height: 28px; }
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 4px; }
-        .v-red { color: #e13c3c; }
-        .v-green { color: #18a058; }
-        .v-blue { color: #2f7ef7; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 4px; }
+        .v-red { color: #FB2323; }
+        .v-green { color: #1BA854; }
+        .v-blue { color: #2386EE; }
         .chart-box { background: #fff; border-radius: 4px; padding: 12px; }
         .progress-wrap { position: relative; height: 14px; line-height: 14px; background: #eee; border-radius: 7px; }
-        .progress-bar { height: 14px; border-radius: 7px; background: #2f7ef7; }
+        .progress-bar { height: 14px; border-radius: 7px; background: #2386EE; }
         .progress-text { position: absolute; top: 0; left: 0; width: 100%; text-align: center; font-size: 11px; }
     </style>
 </head>
@@ -34,7 +35,7 @@
         </div></div>
         <div class="layui-col-md2"><div class="kpi-card">
             <div class="kpi-title">应盘 / 已盘</div>
-            <div class="kpi-value"><span id="kChecked">0</span><span style="font-size:15px;color:#9aa1ab"> / <span id="kSubject">0</span></span></div>
+            <div class="kpi-value"><span id="kChecked">0</span><span style="font-size:15px;color:#999999"> / <span id="kSubject">0</span></span></div>
             <div class="kpi-sub">盘点率 <span id="kRate">0</span>% · 未盘 <span id="kUnchecked">0</span></div>
         </div></div>
         <div class="layui-col-md2"><div class="kpi-card">
@@ -49,7 +50,7 @@
         </div></div>
         <div class="layui-col-md2"><div class="kpi-card">
             <div class="kpi-title">待处理差异</div>
-            <div class="kpi-value" id="kPending" style="color:#ff9f43">0</div>
+            <div class="kpi-value" id="kPending" style="color:#FF991C">0</div>
             <div class="kpi-sub">需人工确认处理结论</div>
         </div></div>
         <div class="layui-col-md2"><div class="kpi-card">
@@ -139,13 +140,13 @@
                 ],
                 series: [
                     {name: '任务数', type: 'bar', data: rows.map(function (r) { return r.task_cnt || 0; }),
-                        itemStyle: {color: '#2f7ef7'}},
+                        itemStyle: {color: '#2386EE'}},
                     {name: '已盘条数', type: 'bar', data: rows.map(function (r) { return r.checked_cnt || 0; }),
-                        itemStyle: {color: '#5ad8a6'}},
+                        itemStyle: {color: '#1BA854'}},
                     {name: '盘盈金额', type: 'line', yAxisIndex: 1, smooth: true,
-                        data: rows.map(function (r) { return r.profit_amt || 0; }), itemStyle: {color: '#e13c3c'}},
+                        data: rows.map(function (r) { return r.profit_amt || 0; }), itemStyle: {color: '#FB2323'}},
                     {name: '盘亏金额', type: 'line', yAxisIndex: 1, smooth: true,
-                        data: rows.map(function (r) { return r.loss_amt || 0; }), itemStyle: {color: '#18a058'}}
+                        data: rows.map(function (r) { return r.loss_amt || 0; }), itemStyle: {color: '#1BA854'}}
                 ]
             });
         });
@@ -162,9 +163,9 @@
                 yAxis: {type: 'value', name: '元'},
                 series: [
                     {name: '盘盈金额', type: 'bar', data: rows.map(function (r) { return r.profit_amt || 0; }),
-                        itemStyle: {color: '#e13c3c'}},
+                        itemStyle: {color: '#FB2323'}},
                     {name: '盘亏金额', type: 'bar', data: rows.map(function (r) { return r.loss_amt || 0; }),
-                        itemStyle: {color: '#18a058'}}
+                        itemStyle: {color: '#1BA854'}}
                 ]
             });
         });

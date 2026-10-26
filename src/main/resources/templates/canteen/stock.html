@@ -8,11 +8,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
-        .sum-bar { margin-top: 8px; text-align: right; font-size: 13px; color: #4a5360; }
-        .sum-bar b { color: #e13c3c; font-size: 15px; margin: 0 4px; }
+        .sum-bar { margin-top: 8px; text-align: right; font-size: 13px; color: #333333; }
+        .sum-bar b { color: #FB2323; font-size: 15px; margin: 0 4px; }
         /* 页签内容区高度恒定：切换页签时页面总高不变，不会来回抖动 */
         .layui-tab-card > .layui-tab-content { padding: 10px; min-height: 560px; }
     </style>
@@ -249,7 +250,7 @@
                 {field: 'unit', title: '单位', width: 70, align: 'center'},
                 {field: 'quantity', title: '结存数量', width: 110, align: 'right', sort: true,
                     templet: function (r) {
-                        var c = Number(r.quantity || 0) < 0 ? '#e13c3c' : '#1f2329';
+                        var c = Number(r.quantity || 0) < 0 ? '#FB2323' : '#212121';
                         return '<span style="color:' + c + ';font-weight:600">' + qty(r.quantity) + '</span>';
                     }},
                 {field: 'avgPrice', title: '加权单价(元)', width: 120, align: 'right',
@@ -332,7 +333,7 @@
                     templet: function (r) { return money(r.actualAmount); }},
                 {field: 'diffAmount', title: '差异金额(元)', minWidth: 130, align: 'right',
                     templet: function (r) {
-                        var c = Number(r.diffAmount || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        var c = Number(r.diffAmount || 0) >= 0 ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + ';font-weight:600">' + money(r.diffAmount) + '</span>';
                     }},
                 {field: 'checker', title: '盘点人', width: 90},
@@ -396,7 +397,7 @@
                     }},
                 {field: 'diffQty', title: '差异', width: 100, align: 'right',
                     templet: function (r) {
-                        var c = Number(r.diffQty || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        var c = Number(r.diffQty || 0) >= 0 ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + '">' + qty(r.diffQty) + '</span>';
                     }},
                 {field: 'unitPrice', title: '单价(元)', width: 100, align: 'right',

@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
     </style>
 </head>
@@ -275,7 +276,7 @@
                 {field: 'overdueCount', title: '逾期', width: 70, align: 'center',
                     templet: function (r) {
                         return r.overdueCount > 0
-                            ? '<span style="color:#e13c3c;font-weight:600">' + r.overdueCount + '</span>'
+                            ? '<span style="color:#FB2323;font-weight:600">' + r.overdueCount + '</span>'
                             : '0';
                     }},
                 {field: 'amount', title: '问题金额(元)', width: 120, align: 'right',

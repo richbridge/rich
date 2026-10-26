@@ -52,11 +52,11 @@ layui.define(['all'], function(exports){
 
     // 主题配置
     theme: {
-      // 内置主题配色方案
+      // 内置主题配色方案（首方案为金蝶 KDesign：白侧栏 + 蓝选中）
       color: [{
-        main: '#20222A', // 主题色
-        selected: '#16baaa', // 选中色
-        alias: 'default' // 默认别名
+        main: '#FFFFFF', // 侧边栏 / 弹层标题底色
+        selected: '#2386EE', // 选中色（KDesign 主题色）
+        alias: 'kdesign' // 默认别名
       },{
         main: '#03152A',
         selected: '#3B91FF',

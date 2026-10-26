@@ -8,17 +8,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
         .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         .kpi-card {
             flex: 1; min-width: 150px; background: #fff; border-radius: 4px; padding: 14px 16px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
         }
-        .kpi-label { color: #8a9099; font-size: 13px; }
-        .kpi-value { font-size: 21px; font-weight: 600; color: #1f2329; margin-top: 5px; line-height: 1.2; }
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 5px; }
+        .kpi-label { color: #999999; font-size: 13px; }
+        .kpi-value { font-size: 21px; font-weight: 600; color: #212121; margin-top: 5px; line-height: 1.2; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 5px; }
         /* 页签内容区高度恒定：切换页签时页面总高不变，
            不会在「是否出现滚动条」的临界点来回抖动 */
         .layui-tab-card > .layui-tab-content { padding: 10px; min-height: 560px; }
@@ -36,12 +37,12 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">本年收入</div>
-            <div class="kpi-value" id="kpiIn" style="color:#18a058">-</div>
+            <div class="kpi-value" id="kpiIn" style="color:#1BA854">-</div>
             <div class="kpi-sub">就餐收入 + 充值 + 其他</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">本年支出</div>
-            <div class="kpi-value" id="kpiOut" style="color:#e13c3c">-</div>
+            <div class="kpi-value" id="kpiOut" style="color:#FB2323">-</div>
             <div class="kpi-sub">采购付款 + 费用支出</div>
         </div>
         <div class="kpi-card">
@@ -576,7 +577,7 @@
                 if (res.code !== 0) return;
                 var k = res.data.kpi || {};
                 $('#kpiBalance').text(money(k.accountBalance));
-                $('#kpiBalance').css('color', Number(k.accountBalance || 0) >= 0 ? '#18a058' : '#e13c3c');
+                $('#kpiBalance').css('color', Number(k.accountBalance || 0) >= 0 ? '#1BA854' : '#FB2323');
                 $('#kpiCount').text(k.accountCount || 0);
                 $('#kpiCard').text(money(k.cardBalance));
                 $('#kpiCardCnt').text(k.cardCount || 0);
@@ -591,7 +592,7 @@
                 $('#kpiIn').text(money(inSum));
                 $('#kpiOut').text(money(outSum));
                 $('#kpiYearProfit').text(money(inSum - outSum));
-                $('#kpiYearProfit').css('color', (inSum - outSum) >= 0 ? '#18a058' : '#e13c3c');
+                $('#kpiYearProfit').css('color', (inSum - outSum) >= 0 ? '#1BA854' : '#FB2323');
             });
         }
         loadKpi();
@@ -617,7 +618,7 @@
                 {field: 'sourceNo', title: '来源单号', width: 130},
                 {field: 'amount', title: '金额(元)', width: 130, align: 'right',
                     templet: function (r) {
-                        var c = r.direction === '收入' ? '#18a058' : '#e13c3c';
+                        var c = r.direction === '收入' ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + ';font-weight:600">' + money(r.amount) + '</span>';
                     }},
                 {field: 'balance', title: '余额(元)', width: 140, align: 'right',
@@ -844,7 +845,7 @@
                 {field: 'cardType', title: '卡类型', width: 100, align: 'center'},
                 {field: 'balance', title: '余额(元)', width: 120, align: 'right', sort: true,
                     templet: function (r) {
-                        var c = Number(r.balance || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        var c = Number(r.balance || 0) >= 0 ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + ';font-weight:600">' + money(r.balance) + '</span>';
                     }},
                 {field: 'totalRecharge', title: '累计充值(元)', width: 130, align: 'right',
@@ -955,19 +956,19 @@
                     templet: function (r) { return Number(r.people || 0).toLocaleString('zh-CN'); }},
                 {field: 'income', title: '就餐收入(元)', minWidth: 140, align: 'right', totalRow: true,
                     templet: function (r) {
-                        return '<span style="color:#2f7ef7">' + money(r.income) + '</span>';
+                        return '<span style="color:#2386EE">' + money(r.income) + '</span>';
                     }},
                 {field: 'cost', title: '食材成本(元)', minWidth: 140, align: 'right', totalRow: true,
                     templet: function (r) {
-                        return '<span style="color:#ff9f43">' + money(r.cost) + '</span>';
+                        return '<span style="color:#FF991C">' + money(r.cost) + '</span>';
                     }},
                 {field: 'fee', title: '运行费用(元)', minWidth: 140, align: 'right', totalRow: true,
                     templet: function (r) {
-                        return '<span style="color:#7c5cff">' + money(r.fee) + '</span>';
+                        return '<span style="color:#2386EE">' + money(r.fee) + '</span>';
                     }},
                 {field: 'profit', title: '结余(元)', minWidth: 140, align: 'right', totalRow: true,
                     templet: function (r) {
-                        var c = Number(r.profit || 0) >= 0 ? '#18a058' : '#e13c3c';
+                        var c = Number(r.profit || 0) >= 0 ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + ';font-weight:600">' + money(r.profit) + '</span>';
                     }}
             ]]

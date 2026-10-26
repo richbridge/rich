@@ -8,16 +8,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .kpi-card { background: #fff; border-radius: 4px; padding: 14px 16px; margin-bottom: 12px; }
-        .kpi-title { color: #9aa1ab; font-size: 12px; }
+        .kpi-title { color: #999999; font-size: 12px; }
         .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; line-height: 28px; }
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 4px; }
-        .v-red { color: #e13c3c; }
-        .v-green { color: #18a058; }
-        .v-blue { color: #2f7ef7; }
-        .v-orange { color: #ff9f43; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 4px; }
+        .v-red { color: #FB2323; }
+        .v-green { color: #1BA854; }
+        .v-blue { color: #2386EE; }
+        .v-orange { color: #FF991C; }
         .chart-box { background: #fff; border-radius: 4px; padding: 12px; margin-bottom: 12px; }
         .box-title { font-weight: 600; padding: 2px 0 8px; }
     </style>
@@ -53,7 +54,7 @@
         </div></div>
         <div class="layui-col-md2"><div class="kpi-card">
             <div class="kpi-title">库房占用</div>
-            <div class="kpi-value"><span id="kUsed">0</span><span style="font-size:15px;color:#9aa1ab"> / <span id="kCapacity">0</span></span></div>
+            <div class="kpi-value"><span id="kUsed">0</span><span style="font-size:15px;color:#999999"> / <span id="kCapacity">0</span></span></div>
             <div class="kpi-sub">使用率 <span id="kUseRate">0</span>% · 位置 <span id="kLocation">0</span> 个</div>
         </div></div>
     </div>
@@ -179,7 +180,7 @@
                 series: [{
                     name: '案卷数', type: 'bar', barWidth: '55%',
                     data: rows.map(function (r) { return r.volumeCount; }),
-                    itemStyle: {color: '#2f7ef7'}
+                    itemStyle: {color: '#2386EE'}
                 }]
             });
         });
@@ -222,10 +223,10 @@
                 series: [
                     {name: '借出', type: 'line', smooth: true, symbolSize: 7,
                         data: months.map(function (m) { return pick(borrow, m); }),
-                        itemStyle: {color: '#2f7ef7'}, areaStyle: {opacity: 0.12}},
+                        itemStyle: {color: '#2386EE'}, areaStyle: {opacity: 0.12}},
                     {name: '归还', type: 'line', smooth: true, symbolSize: 7,
                         data: months.map(function (m) { return pick(ret, m); }),
-                        itemStyle: {color: '#18a058'}}
+                        itemStyle: {color: '#1BA854'}}
                 ]
             });
         });

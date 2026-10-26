@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
     </style>
 </head>
@@ -114,7 +115,7 @@
     <div style="padding:16px 18px;line-height:1.9;font-size:13px">
         <div style="margin-bottom:10px">
             <span class="layui-badge layui-bg-blue">{{ d.issueType || '未分类' }}</span>
-            <span style="margin-left:8px;color:#8a9099">{{ d.projectName || '' }} · {{ d.checkPeriod || '' }}</span>
+            <span style="margin-left:8px;color:#999999">{{ d.projectName || '' }} · {{ d.checkPeriod || '' }}</span>
         </div>
         <div><b>问题内容：</b>{{ d.description || '' }}</div>
         <div><b>相关建议：</b>{{ d.suggestion || '—' }}</div>

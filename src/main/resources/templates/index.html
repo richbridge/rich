@@ -9,6 +9,116 @@
     <link rel="shortcut icon" type="image/x-icon" th:href="@{/admin/style/imgs/logo.png}"/>
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
+    <style>
+        /* 框架层细节：品牌双行 + 工具栏分隔 + 用户信息块 */
+        .layui-layout-admin .layui-logo {
+            line-height: 1.2;
+            align-items: center;
+        }
+
+        .frame-brand {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        .frame-brand b {
+            font-size: 15px;
+            font-weight: 600;
+            color: #212121;
+            line-height: 20px;
+            white-space: nowrap;
+        }
+
+        .frame-brand em {
+            font-style: normal;
+            font-size: 11px;
+            color: #999;
+            line-height: 14px;
+            letter-spacing: .5px;
+        }
+
+        .frame-tools {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 52px;
+        }
+
+        .frame-tools .layui-nav-item {
+            margin: 0 2px;
+        }
+
+        .frame-divider {
+            width: 1px;
+            height: 18px;
+            background: #E5E5E5;
+            margin: 0 10px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .frame-user {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px !important;
+            height: 34px;
+            line-height: 34px !important;
+            margin: 9px 0;
+            border-radius: 2px;
+            border: 1px solid transparent;
+            transition: background-color .2s, border-color .2s;
+        }
+
+        .frame-user:hover {
+            background: #F5F5F5;
+            border-color: #E5E5E5;
+        }
+
+        .frame-user .layui-nav-img {
+            width: 24px;
+            height: 24px;
+            border-radius: 2px;
+            background: #F2F8FF;
+        }
+
+        .frame-user cite {
+            font-style: normal;
+            font-size: 13px;
+            color: #212121 !important;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .frame-user .layui-nav-more {
+            position: static !important;
+            margin-top: 0;
+            top: auto;
+            border-top-color: #999;
+        }
+
+        .frame-user .layui-nav-child {
+            top: 40px !important;
+            left: auto;
+            right: 0;
+        }
+
+        .frame-user .layui-nav-child dd a {
+            height: 32px;
+            line-height: 32px;
+            text-align: left;
+            padding: 0 12px;
+            color: #212121;
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body class="layui-layout-body" id="LAY_home_iframe">
 <div id="LAY_app" style="visibility: hidden">
@@ -39,12 +149,16 @@
                     </a>
                 </li>
                 <li class="layui-nav-item" lay-unselect>
-                    <a href="javascript:">
+                    <span class="frame-divider"></span>
+                </li>
+                <li class="layui-nav-item frame-user" lay-unselect>
+                    <a href="javascript:" style="display:flex;align-items:center;gap:8px;height:34px;line-height:34px">
                         <img class="layui-nav-img" th:src="@{/admin/style/imgs/template/portrait.png}" alt="">
                         <cite th:text="${nickname}">管理员</cite>
+                        <i class="layui-icon layui-icon-down" style="font-size:12px;color:#999"></i>
                     </a>
                     <dl class="layui-nav-child">
-                        <dd layadmin-event="logout" style="text-align: center;"><a>退出登录</a></dd>
+                        <dd layadmin-event="logout"><a>退出登录</a></dd>
                     </dl>
                 </li>
                 <li class="layui-nav-item layui-hide-xs" lay-unselect>
@@ -64,7 +178,7 @@
         <div class="layui-side layui-side-menu">
             <div class="layui-side-scroll">
                 <div class="layui-logo" lay-href="/home">
-                <span>招金有色</span>
+                <span class="frame-brand"><b>招金有色</b><em>综合数智系统</em></span>
                 </div>
                 <!-- 菜单由后端按当前用户的权限集合裁剪后下发 -->
                 <ul class="layui-nav layui-nav-tree" lay-accordion id="LAY-system-side-menu"

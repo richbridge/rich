@@ -8,10 +8,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .search-bar { background: #fff; padding: 12px 14px 2px; border-radius: 4px; margin-bottom: 12px; }
-        .amount-tip { font-size: 12px; color: #8a9099; margin-left: 6px; }
+        .amount-tip { font-size: 12px; color: #999999; margin-left: 6px; }
     </style>
 </head>
 <body>
@@ -437,7 +438,7 @@
                     templet: function (r) { return money(r.taxAmount); }},
                 {field: 'netAmount', title: '实发(元)', width: 120, align: 'right', sort: true,
                     templet: function (r) {
-                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.netAmount) + '</span>';
+                        return '<span style="color:#2386EE;font-weight:600">' + money(r.netAmount) + '</span>';
                     }},
                 {field: 'reportDate', title: '上报日期', width: 110, align: 'center'},
                 {field: 'reporter', title: '上报人', width: 90},

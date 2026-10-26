@@ -8,10 +8,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
-        .rich-tip { color: #8a9099; font-size: 12px; line-height: 1.8; }
+        .rich-tip { color: #999999; font-size: 12px; line-height: 1.8; }
     </style>
 </head>
 <body>
@@ -85,7 +86,7 @@
                 <button type="button" class="layui-btn layui-btn-sm layui-btn-primary"
                         data-discover="CJ">发现 CJ 品种
                 </button>
-                <span style="float:right;color:#8a9099;font-size:12px;line-height:38px">
+                <span style="float:right;color:#999999;font-size:12px;line-height:38px">
                     关闭开关后，该品种不再纳入定时采集
                 </span>
             </form>
@@ -115,16 +116,59 @@
 
         var SOURCE_NAME = {SHFE: '上期所', SGE: '上金所', SMM: '上海有色', CJ: '长江有色'};
 
+        /** HTML 转义：日志可能内含尖括号导致单元格错乱。 */
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        /** 把服务端原始日志摘要成一句话：截掉附加异常段与 Java 异常堆栈。 */
+        function briefMsg(msg, max) {
+            if (!msg) return '-';
+            var s = String(msg);
+            var cut = s.indexOf('（另有');
+            if (cut > 0) s = s.slice(0, cut).trim();
+            // Java 异常：只保留类名，丢弃堆栈与连接信息
+            s = s.replace(/([A-Za-z.]+(?:Exception|Error)):\s*[\s\S]*$/, '$1');
+            max = max || 56;
+            return s.length > max ? s.slice(0, max) + '…' : s;
+        }
+
+        /** 「详情」弹层：展示未被摘要的完整日志。 */
+        window.kdLogDetail = function (el) {
+            var full = el.getAttribute('data-full') || '';
+            layui.use(['layer'], function () {
+                layui.layer.open({
+                    type: 1,
+                    title: '完整日志',
+                    area: ['680px', '460px'],
+                    btn: ['复制', '关闭'],
+                    content: '<div class="kd-log-detail"><pre class="kd-log-pre">' + esc(full) + '</pre></div>',
+                    yes: function (index, layero) {
+                        var ta = document.createElement('textarea');
+                        ta.value = full;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch (e) { }
+                        document.body.removeChild(ta);
+                        layui.layer.msg('已复制到剪贴板', {icon: 1, time: 1200});
+                        return false;
+                    }
+                });
+            });
+        };
+
         /** 统一的采集反馈：成功提示条数，失败红色提示。 */
         function feedback(res, title) {
             if (!res) return;
             if (res.code === 0) {
                 var d = res.data || {};
-                var summary = d.message || ('成功 ' + (d.recordCount || 0) + ' 条 / 请求 '
-                    + (d.requestCount || 0) + ' 个');
+                var summary = briefMsg(d.message || ('成功 ' + (d.recordCount || 0) + ' 条 / 请求 '
+                    + (d.requestCount || 0) + ' 个'), 90);
                 layer.msg(title + '：' + summary, {icon: 1, time: 3000});
             } else {
-                layer.alert(res.msg || '采集失败', {icon: 2, title: title + '失败'});
+                layer.alert(esc(briefMsg(res.msg || '采集失败', 300)), {icon: 2, title: title + '失败'});
             }
         }
 
@@ -274,7 +318,17 @@
                     var ms = Number(r.costMs || 0);
                     return ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : ms + ' ms';
                 }},
-                {field: 'message', title: '说明', minWidth: 240},
+                {field: 'message', title: '说明', minWidth: 260, templet: function (r) {
+                    var full = r.message || '-';
+                    var brief = briefMsg(full, 56);
+                    var cls = r.status === 1 ? 'kd-log--ok' : (r.status === -2 ? 'kd-log--skip' : 'kd-log--fail');
+                    var html = '<span class="kd-log-text ' + cls + '">' + esc(brief) + '</span>';
+                    if (brief !== String(full)) {
+                        html += '<a class="kd-log-more" onclick="kdLogDetail(this)" data-full="'
+                            + esc(full) + '">详情</a>';
+                    }
+                    return html;
+                }},
                 {field: 'startTime', title: '开始时间', width: 170}
             ]]
         });

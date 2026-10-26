@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
 
         .rich-gap { margin-bottom: 12px; }
 
@@ -128,8 +129,8 @@
             layui.each(list, function (i, p) {
                 map[p.id] = {
                     id: p.id,
-                    title: p.permName + '  <span style="color:#8a8f99">[' + p.permCode + ']</span>'
-                        + (p.path ? '  <span style="color: #AA3130">' + p.path + '</span>' : ''),
+                    title: p.permName + '  <span style="color:#999999">[' + p.permCode + ']</span>'
+                        + (p.path ? '  <span style="color: #2386EE">' + p.path + '</span>' : ''),
                     spread: true,
                     children: []
                 };

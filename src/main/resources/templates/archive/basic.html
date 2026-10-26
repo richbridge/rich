@@ -8,18 +8,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .pane-box { background: #fff; padding: 12px; border-radius: 4px; }
         .layui-tab-content { min-height: 560px; padding: 10px 0; }
         .chip { display: inline-block; padding: 1px 8px; margin: 0 6px 6px 0; font-size: 12px;
-            color: #2f7ef7; background: #eef4ff; border: 1px solid #d6e4ff; border-radius: 10px;
+            color: #2386EE; background: #eef4ff; border: 1px solid #d6e4ff; border-radius: 10px;
             cursor: pointer; }
         .chip:hover { background: #dce9ff; }
-        .office-card { border: 1px solid #e6e6e6; border-radius: 4px; padding: 10px 12px;
+        .office-card { border: 1px solid #E5E5E5; border-radius: 4px; padding: 10px 12px;
             margin: 0 10px 10px 0; display: inline-block; min-width: 220px; vertical-align: top; }
         .office-card b { font-size: 14px; }
-        .office-card .num { color: #2f7ef7; font-size: 18px; }
+        .office-card .num { color: #2386EE; font-size: 18px; }
         .office-card .sub { color: #999; font-size: 12px; margin-top: 4px; }
         .bar { position: relative; height: 14px; line-height: 14px; background: #eee;
             border-radius: 7px; overflow: hidden; }
@@ -34,15 +35,15 @@
         .loc-tree .node:hover { background: #f5f8ff; }
         .loc-tree .tree-toggle { width: 18px; height: 18px; line-height: 16px; text-align: center;
             border: 1px solid #d0d7de; border-radius: 3px; cursor: pointer; user-select: none;
-            color: #576b95; font-size: 12px; flex: none; }
+            color: #0E5FD8; font-size: 12px; flex: none; }
         .loc-tree .tree-toggle.leaf { visibility: hidden; }
         .loc-tree .n-name { font-weight: 600; }
         .loc-tree li li .n-name { font-weight: 400; }
-        .loc-tree .n-badge { font-size: 11px; color: #8c8c8c; background: #f2f3f5;
+        .loc-tree .n-badge { font-size: 11px; color: #8c8c8c; background: #F2F2F2;
             padding: 0 6px; border-radius: 8px; flex: none; }
         .loc-tree .n-stat { color: #888; font-size: 12px; }
-        .loc-tree .n-code { color: #576b95; font-size: 12px; }
-        .loc-tree .n-vol { font-size: 12px; color: #2f7ef7; cursor: pointer; flex: none; }
+        .loc-tree .n-code { color: #0E5FD8; font-size: 12px; }
+        .loc-tree .n-vol { font-size: 12px; color: #2386EE; cursor: pointer; flex: none; }
         .loc-tree .n-vol:hover { text-decoration: underline; }
         .loc-tree .mini-bar { width: 90px; }
     </style>
@@ -272,7 +273,7 @@
         function rateBar(cap, used) {
             cap = Number(cap || 0); used = Number(used || 0);
             var pct = cap ? Math.min(100, Math.round(used * 100 / cap)) : 0;
-            var color = pct >= 90 ? '#e13c3c' : '#2f7ef7';
+            var color = pct >= 90 ? '#FB2323' : '#2386EE';
             return '<div class="bar"><i style="width:' + pct + '%;background:' + color + '"></i>'
                     + '<span>' + pct + '%</span></div>';
         }
@@ -328,7 +329,7 @@
                 var leaf = !(n.children && n.children.length);
                 var cap = Number(n.capacity || 0), used = Number(n.usedCount || 0);
                 var pct = cap ? Math.min(100, Math.round(used * 100 / cap)) : 0;
-                var barColor = pct >= 90 ? '#e13c3c' : '#2f7ef7';
+                var barColor = pct >= 90 ? '#FB2323' : '#2386EE';
                 html += '<li>'
                         + '<div class="node">'
                         + '<span class="tree-toggle' + (leaf ? ' leaf' : '') + '">−</span>'

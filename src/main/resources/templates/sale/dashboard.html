@@ -8,9 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
         body {
-            background: #f2f3f5;
+            background: #F2F2F2;
             padding: 12px;
         }
 
@@ -27,13 +28,13 @@
         .rich-title h2 {
             font-size: 18px;
             font-weight: 600;
-            color: #2f3542;
+            color: #212121;
             margin: 0;
         }
 
         .rich-title .rich-time {
             font-size: 13px;
-            color: #99a1ae;
+            color: #999999;
         }
 
         .rich-kpi {
@@ -94,7 +95,7 @@
 
     <!-- 标题条 -->
     <div class="rich-title">
-        <h2>金宝矿业销售数据大屏<span style="font-size:12px;color:#99a1ae;font-weight:400;margin-left:8px">
+        <h2>金宝矿业销售数据大屏<span style="font-size:12px;color:#999999;font-weight:400;margin-left:8px">
             图表总览；明细数据请到「销售统计报表」</span></h2>
         <div style="display:flex;align-items:center;gap:12px">
             <span class="rich-time">数据更新：<span id="updateTime">--</span></span>
@@ -110,7 +111,7 @@
     <!-- 核心指标 -->
     <div class="layui-row layui-col-space15 rich-row-gap">
         <div class="layui-col-md3">
-            <div class="rich-kpi" style="background: linear-gradient(135deg,#16baaa,#0f9c8e);">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#2386EE,#375CCA);">
                 <i class="layui-icon layui-icon-diamond rich-kpi-icon"></i>
                 <div class="rich-kpi-title">金含量总计</div>
                 <div class="rich-kpi-value"><span id="kpiTotalGold">0</span><span class="rich-kpi-unit">g</span></div>
@@ -118,7 +119,7 @@
             </div>
         </div>
         <div class="layui-col-md3">
-            <div class="rich-kpi" style="background: linear-gradient(135deg,#1E9FFF,#0f7fd6);">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#2386EE,#375CCA);">
                 <i class="layui-icon layui-icon-form rich-kpi-icon"></i>
                 <div class="rich-kpi-title">精矿干重</div>
                 <div class="rich-kpi-value"><span id="kpiDryWeight">0</span><span class="rich-kpi-unit">t</span></div>
@@ -126,7 +127,7 @@
             </div>
         </div>
         <div class="layui-col-md3">
-            <div class="rich-kpi" style="background: linear-gradient(135deg,#F78400,#d97100);">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#FF991C,#FF991C);">
                 <i class="layui-icon layui-icon-rmb rich-kpi-icon"></i>
                 <div class="rich-kpi-title">已结算</div>
                 <div class="rich-kpi-value"><span id="kpiSettledGold">0</span><span class="rich-kpi-unit">g</span></div>
@@ -134,7 +135,7 @@
             </div>
         </div>
         <div class="layui-col-md3">
-            <div class="rich-kpi" style="background: linear-gradient(135deg,#AA3130,#8a2726);">
+            <div class="rich-kpi" style="background: linear-gradient(135deg,#2386EE,#375CCA);">
                 <i class="layui-icon layui-icon-notice rich-kpi-icon"></i>
                 <div class="rich-kpi-title">欠金量</div>
                 <div class="rich-kpi-value"><span id="kpiOweGold">0</span><span class="rich-kpi-unit">g</span></div>
@@ -285,11 +286,11 @@
                 series: [
                     {
                         name: '金含量(g)', type: 'bar', data: gold,
-                        itemStyle: {color: '#1E9FFF'}
+                        itemStyle: {color: '#2386EE'}
                     },
                     {
                         name: '批次数量', type: 'line', yAxisIndex: 1, data: batches,
-                        smooth: true, itemStyle: {color: '#F78400'}
+                        smooth: true, itemStyle: {color: '#FF991C'}
                     }
                 ]
             });
@@ -325,7 +326,7 @@
                 series: [{
                     type: 'bar',
                     data: (list || []).map(function (r) { return Number(r.value || 0); }),
-                    itemStyle: {color: '#16baaa'},
+                    itemStyle: {color: '#2386EE'},
                     label: {show: true, position: 'right'}
                 }]
             });

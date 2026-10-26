@@ -59,7 +59,7 @@ public class RoutePermissionGuard implements HandlerInterceptor {
      * 走独立的权限模型，不参与后台 RBAC 判定。
      */
     private static final Set<String> SKIP_PREFIX = Set.of(
-            "/layui", "/admin", "/vendor", "/css", "/js", "/images", "/static",
+            "/layui", "/admin", "/vendor", "/css", "/js", "/img", "/images", "/static",
             "/api/doc", "/openapi"
     );
 

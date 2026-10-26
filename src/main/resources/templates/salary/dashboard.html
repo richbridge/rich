@@ -8,25 +8,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link th:href="@{/layui/css/layui.css}" rel="stylesheet">
     <link th:href="@{/admin/admin-ui/css/admin.css}" rel="stylesheet">
+    <link th:href="@{/css/kdesign.css}" rel="stylesheet">
     <style>
-        body { background: #f2f3f5; padding: 12px; }
+        body { background: #F2F2F2; padding: 12px; }
         .rich-card-gap { margin-bottom: 12px; }
         .kpi-row { display: flex; gap: 12px; flex-wrap: wrap; }
         .kpi-card {
             flex: 1; min-width: 160px; background: #fff; border-radius: 4px; padding: 16px 18px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
         }
-        .kpi-label { color: #8a9099; font-size: 13px; }
-        .kpi-value { font-size: 24px; font-weight: 600; color: #1f2329; margin-top: 6px; line-height: 1.2; }
-        .kpi-sub { color: #9aa1ab; font-size: 12px; margin-top: 6px; }
+        .kpi-label { color: #999999; font-size: 13px; }
+        .kpi-value { font-size: 24px; font-weight: 600; color: #212121; margin-top: 6px; line-height: 1.2; }
+        .kpi-sub { color: #999999; font-size: 12px; margin-top: 6px; }
         .chart-box { width: 100%; height: 300px; }
         .tip-card {
             background: #fff; border-radius: 4px; padding: 14px 16px; cursor: pointer;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: box-shadow .2s;
         }
         .tip-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
-        .tip-title { font-size: 14px; font-weight: 600; color: #1f2329; }
-        .tip-desc { font-size: 13px; color: #8a9099; margin-top: 6px; }
+        .tip-title { font-size: 14px; font-weight: 600; color: #212121; }
+        .tip-desc { font-size: 13px; color: #999999; margin-top: 6px; }
         .tip-num { font-size: 20px; font-weight: 600; margin-right: 4px; }
     </style>
 </head>
@@ -43,12 +44,12 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-label">当期实际下拨</div>
-            <div class="kpi-value" id="kpiAlloc" style="color:#2f7ef7">-</div>
+            <div class="kpi-value" id="kpiAlloc" style="color:#2386EE">-</div>
             <div class="kpi-sub">已发放 <span id="kpiUsed">0</span></div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">当期结余</div>
-            <div class="kpi-value" id="kpiBalance" style="color:#18a058">-</div>
+            <div class="kpi-value" id="kpiBalance" style="color:#1BA854">-</div>
             <div class="kpi-sub">下拨金额 - 已发放</div>
         </div>
         <div class="kpi-card">
@@ -73,25 +74,25 @@
         <div class="layui-col-md3">
             <div class="tip-card" id="tipPending">
                 <div class="tip-title">待审核上报单</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipPendingNum" style="color:#ff9f43">0</span> 张待财务科审核</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipPendingNum" style="color:#FF991C">0</span> 张待财务科审核</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipDraft">
                 <div class="tip-title">草稿未上报</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipDraftNum" style="color:#8a9099">0</span> 张尚未提交</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipDraftNum" style="color:#999999">0</span> 张尚未提交</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipRejected">
                 <div class="tip-title">被驳回</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipRejectedNum" style="color:#e13c3c">0</span> 张需修改重报</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipRejectedNum" style="color:#FB2323">0</span> 张需修改重报</div>
             </div>
         </div>
         <div class="layui-col-md3">
             <div class="tip-card" id="tipWait">
                 <div class="tip-title">待下拨</div>
-                <div class="tip-desc">有 <span class="tip-num" id="tipWaitNum" style="color:#7c5cff">0</span> 张下拨单未拨付</div>
+                <div class="tip-desc">有 <span class="tip-num" id="tipWaitNum" style="color:#2386EE">0</span> 张下拨单未拨付</div>
             </div>
         </div>
     </div>
@@ -200,13 +201,13 @@
                     templet: function (r) { return money(r.approvedAmount); }},
                 {field: 'allocAmount', title: '下拨金额(元)', width: 130, align: 'right', sort: true,
                     templet: function (r) {
-                        return '<span style="color:#2f7ef7;font-weight:600">' + money(r.allocAmount) + '</span>';
+                        return '<span style="color:#2386EE;font-weight:600">' + money(r.allocAmount) + '</span>';
                     }},
                 {field: 'usedAmount', title: '已发放(元)', width: 120, align: 'right',
                     templet: function (r) { return money(r.usedAmount); }},
                 {field: 'balanceAmount', title: '结余(元)', width: 120, align: 'right',
                     templet: function (r) {
-                        var c = Number(r.balanceAmount || 0) > 0 ? '#18a058' : '#e13c3c';
+                        var c = Number(r.balanceAmount || 0) > 0 ? '#1BA854' : '#FB2323';
                         return '<span style="color:' + c + '">' + money(r.balanceAmount) + '</span>';
                     }},
                 {field: 'allocDate', title: '下拨日期', width: 110, align: 'center'},
@@ -283,7 +284,7 @@
                         return {name: r.name, value: Number(r.value || 0)};
                     })
                 }],
-                color: ['#2f7ef7', '#18a058', '#ff9f43', '#e13c3c', '#8a9099', '#7c5cff']
+                color: ['#2386EE', '#1BA854', '#FF991C', '#FB2323', '#999999', '#2386EE']
             }, true);
         }
 
@@ -302,22 +303,22 @@
                 series: [
                     {
                         name: '下拨', type: 'bar', barWidth: 12,
-                        itemStyle: {color: '#c7d7f5', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#E3EEFF', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return wan(r.alloced); })
                     },
                     {
                         name: '已发放', type: 'bar', barWidth: 12,
-                        itemStyle: {color: '#18a058', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#1BA854', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return wan(r.used); })
                     },
                     {
                         name: '应发', type: 'bar', barWidth: 12,
-                        itemStyle: {color: '#2f7ef7', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#2386EE', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return wan(r.gross); })
                     },
                     {
                         name: '实发', type: 'bar', barWidth: 12,
-                        itemStyle: {color: '#ff9f43', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#FF991C', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return wan(r.net); })
                     }
                 ]
@@ -334,22 +335,22 @@
                 series: [
                     {
                         name: '核定总额', type: 'bar', barWidth: 18,
-                        itemStyle: {color: '#c7d7f5', borderRadius: [3, 3, 0, 0]},
+                        itemStyle: {color: '#E3EEFF', borderRadius: [3, 3, 0, 0]},
                         data: rows.map(function (r) { return wan(r.approved); })
                     },
                     {
                         name: '下拨金额', type: 'line', smooth: true, symbolSize: 6,
-                        itemStyle: {color: '#2f7ef7'},
+                        itemStyle: {color: '#2386EE'},
                         data: rows.map(function (r) { return wan(r.alloced); })
                     },
                     {
                         name: '已发放', type: 'line', smooth: true, symbolSize: 6,
-                        itemStyle: {color: '#18a058'},
+                        itemStyle: {color: '#1BA854'},
                         data: rows.map(function (r) { return wan(r.used); })
                     },
                     {
                         name: '结余', type: 'line', smooth: true, symbolSize: 6,
-                        itemStyle: {color: '#ff9f43'},
+                        itemStyle: {color: '#FF991C'},
                         data: rows.map(function (r) { return wan(r.balance); })
                     }
                 ]
